@@ -25,29 +25,14 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.       *
  ******************************************************************************/
 
-package me.asu.http.sender;
+package me.asu.http.client;
 
-import me.asu.http.HttpException;
-import me.asu.http.Request;
-import me.asu.http.Response;
-import me.asu.http.Sender;
+import java.net.Proxy;
+import java.net.URL;
 
-public class GetSender extends Sender {
+public interface ProxySwitcher {
 
-    public GetSender(Request request) {
-        super(request);
-    }
-
-    @Override
-    public Response send() throws HttpException {
-        try {
-            openConnection();
-            setupRequestHeader();
-            return createResponse(getResponseHeader());
-        }
-        catch (Exception e) {
-            throw new HttpException(request.getUrl().toString(), e);
-        }
-    }
-
+	Proxy getProxy(URL url);
+	
+	Proxy getProxy(Request req);
 }

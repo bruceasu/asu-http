@@ -25,14 +25,45 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.       *
  ******************************************************************************/
 
-package me.asu.http;
+package me.asu.http.client.sender;
 
-import java.net.Proxy;
-import java.net.URL;
+import java.io.*;
 
-public interface ProxySwitcher {
+import me.asu.util.io.Streams;
+import me.asu.http.client.HttpException;
+import me.asu.http.client.Request;
+import me.asu.http.client.Response;
+import me.asu.http.client.Sender;
 
-	Proxy getProxy(URL url);
-	
-	Proxy getProxy(Request req);
+public class PostSender extends Sender {
+
+    public PostSender(Request request) {
+        super(request);
+    }
+
+    @Override
+    public Response send() throws HttpException {
+        try {
+            openConnection();
+            InputStream ins = request.getInputStream();
+            setupRequestHeader();
+            if (ins != null && request.getHeader() != null && ins instanceof ByteArrayInputStream
+                    && this.request.getHeader().get("Content-Length") == null) {
+                conn.addRequestProperty("Content-Length", "" + ins.available());
+            }
+            setupDoInputOutputFlag();
+            if (null != ins) {
+                OutputStream ops = conn.getOutputStream();
+                Streams.write(ops, ins, 8192);
+                Streams.safeClose(ins);
+                Streams.safeFlush(ops);
+                Streams.safeClose(ops);
+            }
+            return createResponse(getResponseHeader());
+        } catch (Exception e) {
+            throw new HttpException(request.getUrl().toString(), e);
+        }
+    }
+
+
 }

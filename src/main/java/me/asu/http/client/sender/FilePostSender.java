@@ -25,16 +25,16 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.       *
  ******************************************************************************/
 
-package me.asu.http.sender;
+package me.asu.http.client.sender;
 
 import java.io.*;
 import java.util.Map;
 import java.util.Map.Entry;
 
 import me.asu.util.io.Streams;
-import me.asu.http.HttpException;
-import me.asu.http.Request;
-import me.asu.http.Response;
+import me.asu.http.client.HttpException;
+import me.asu.http.client.Request;
+import me.asu.http.client.Response;
 
 public class FilePostSender extends PostSender {
 

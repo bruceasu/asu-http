@@ -25,91 +25,29 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.       *
  ******************************************************************************/
 
-package me.asu.http;
+package me.asu.http.client.sender;
 
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
+import me.asu.http.client.HttpException;
+import me.asu.http.client.Request;
+import me.asu.http.client.Response;
+import me.asu.http.client.Sender;
 
-public class Header {
+public class GetSender extends Sender {
 
-    private Header() {
-        items = new HashMap<String, String>();
+    public GetSender(Request request) {
+        super(request);
     }
 
-    private Map<String, String> items;
-
-    public Collection<String> keys() {
-        return items.keySet();
-    }
-
-    public String get(String key) {
-        return items.get(key);
-    }
-
-    public Header set(String key, String value) {
-        if (null != key) {
-            items.put(key, value);
+    @Override
+    public Response send() throws HttpException {
+        try {
+            openConnection();
+            setupRequestHeader();
+            return createResponse(getResponseHeader());
         }
-        return this;
-    }
-
-    public Header remove(String key) {
-        items.remove(key);
-        return this;
-    }
-
-    public Header clear() {
-        items.clear();
-        return this;
-    }
-
-    public Set<Entry<String, String>> getAll() {
-        return items.entrySet();
-    }
-
-    public Header addAll(Map<String, String> map) {
-        if (null != map) {
-            items.putAll(map);
+        catch (Exception e) {
+            throw new HttpException(request.getUrl().toString(), e);
         }
-        return this;
     }
 
-
-
-    public static Header create(Map<String, String> properties) {
-        return new Header().addAll(properties);
-    }
-
-
-    public static Header create() {
-        Header header = new Header();
-        header.set("User-Agent", "Nutz.Robot");
-        header.set("Accept-Encoding", "gzip,deflate");
-        header.set("Accept", "text/xml,application/xml,application/xhtml+xml,text/html;"
-                + "q=0.9,text/plain;q=0.8,image/png,*/*;q=0.5");
-        header.set("Accept-Language", "en-US,en,zh,zh-CN");
-        header.set("Accept-Charset", "ISO-8859-1,*,utf-8");
-        header.set("Connection", "keep-alive");
-        header.set("Cache-Control", "max-age=0");
-        return header;
-    }
-
-    public String get(String key, String defaultValue) {
-        String value = get(key);
-        if (value == null) {
-            return defaultValue;
-        }
-        return value;
-    }
-
-    public int getInt(String key, int defaultValue) {
-        String value = get(key);
-        if (value == null) {
-            return defaultValue;
-        }
-        return Integer.parseInt(value);
-    }
 }

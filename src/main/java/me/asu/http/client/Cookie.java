@@ -25,45 +25,61 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.       *
  ******************************************************************************/
 
-package me.asu.http.sender;
+package me.asu.http.client;
 
-import java.io.*;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
 
-import me.asu.util.io.Streams;
-import me.asu.http.HttpException;
-import me.asu.http.Request;
-import me.asu.http.Response;
-import me.asu.http.Sender;
 
-public class PostSender extends Sender {
+public class Cookie {
 
-    public PostSender(Request request) {
-        super(request);
+    protected Map<String, String> map;
+
+    public Cookie() {
+        map = new HashMap<String, String>();
     }
 
-    @Override
-    public Response send() throws HttpException {
-        try {
-            openConnection();
-            InputStream ins = request.getInputStream();
-            setupRequestHeader();
-            if (ins != null && request.getHeader() != null && ins instanceof ByteArrayInputStream
-                    && this.request.getHeader().get("Content-Length") == null) {
-                conn.addRequestProperty("Content-Length", "" + ins.available());
+    public Cookie(String s) {
+        this();
+        parse(s);
+    }
+
+    public String get(String name) {
+        return map.get(name);
+    }
+
+    public Cookie remove(String name) {
+        map.remove(name);
+        return this;
+    }
+
+    public Cookie set(String name, String value) {
+        map.put(name, value);
+        return this;
+    }
+
+    public void parse(String str) {
+        String[] ss = str.split(";");
+        for (String s : ss) {
+            String[] p = s.split("=]");
+            if (p.length == 1) {
+                map.put(p[0], "");
+            } else {
+                map.put(p[0], p[1]);
             }
-            setupDoInputOutputFlag();
-            if (null != ins) {
-                OutputStream ops = conn.getOutputStream();
-                Streams.write(ops, ins, 8192);
-                Streams.safeClose(ins);
-                Streams.safeFlush(ops);
-                Streams.safeClose(ops);
-            }
-            return createResponse(getResponseHeader());
-        } catch (Exception e) {
-            throw new HttpException(request.getUrl().toString(), e);
         }
     }
 
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        for (Iterator<Map.Entry<String, String>> it = map.entrySet().iterator(); it.hasNext();) {
+            Map.Entry<String, String> entry = it.next();
+            sb.append(entry.getKey()).append('=').append(entry.getValue());
+            if (it.hasNext())
+                sb.append("; ");
+        }
+        return sb.toString();
+    }
 
 }

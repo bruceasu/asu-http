@@ -25,7 +25,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.       *
  ******************************************************************************/
 
-package me.asu.http;
+package me.asu.http.client;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;

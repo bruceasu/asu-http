@@ -30,4 +30,4 @@
  * <p>
  * 建议大家不要用这个包里的东东，虽然它能工作，但是出了问题我们一概不负责，谢谢 -_-!
  */
-package me.asu.http;
+package me.asu.http.client;

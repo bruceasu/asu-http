@@ -25,14 +25,15 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.       *
  ******************************************************************************/
 
-package me.asu.http.sender;
+package me.asu.http.client.sender;
 
-import me.asu.http.Request;
+import me.asu.http.client.Request;
 
-public class PutSender extends PostSender {
+public class PatchSender extends PostSender {
 
-    public PutSender(Request request) {
+    public PatchSender(Request request) {
         super(request);
     }
+
 
 }

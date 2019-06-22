@@ -21,7 +21,7 @@
  *
  */
 
-package me.asu.http;
+package me.asu.http.client;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;

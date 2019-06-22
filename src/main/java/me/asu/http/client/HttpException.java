@@ -25,14 +25,28 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.       *
  ******************************************************************************/
 
-package me.asu.http.sender;
+package me.asu.http.client;
 
-import me.asu.http.Request;
+@SuppressWarnings("serial")
+public class HttpException extends RuntimeException {
 
-public class DeleteSender extends GetSender {
-
-    public DeleteSender(Request request) {
-        super(request);
+    public HttpException(String url, Throwable cause) {
+        super("url="+url, cause);
     }
 
+    public HttpException() {
+    }
+
+    public HttpException(String message) {
+        super(message);
+    }
+
+    public HttpException(Throwable cause) {
+        super(cause);
+    }
+
+    public HttpException(String message, Throwable cause, boolean enableSuppression,
+                         boolean writableStackTrace) {
+        super(message, cause, enableSuppression, writableStackTrace);
+    }
 }
