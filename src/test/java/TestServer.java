@@ -1,5 +1,4 @@
 import java.io.IOException;
-import me.asu.http.server.AsuHttpHandler;
 import me.asu.http.server.AsuHttpServer;
 
 public class TestServer extends AsuHttpServer {

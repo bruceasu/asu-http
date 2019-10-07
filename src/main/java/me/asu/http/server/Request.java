@@ -1,93 +1,76 @@
 package me.asu.http.server;
 
 import com.sun.net.httpserver.HttpExchange;
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.net.URI;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import me.asu.http.common.CommonContentType;
+import me.asu.http.common.HeaderKey;
+import me.asu.lang.map.MultiValueMap;
 
 public interface Request {
 
     public final static String GET = "GET";
     public final static String POST = "POST";
 
-    public String getParamter(String param);
+    String getParameter(String param);
 
-    public String getMethod();
+    ParamMap getParamMap();
 
-    public URI getReuestURI();
+    MultiValueMap<String, String> getHeadMap();
 
-    public void initRequestHeader();
+    Map<String, Object> getDataMap();
 
-    public void initRequestParam();
+    String getMethod();
 
-    public void initRequestBody();
+    URI getReuestURI();
 
-    public String getRequestBody();
+    String getRequestBody();
 
-    public static class HttpRequest implements Request {
-        private HttpExchange httpExchange;
-        private Map<String, String> paramMap = new HashMap<String, String>();
-        private Map<String, List<String>> headMap = new HashMap<String, List<String>>();
-        private String requestBody = "";
+    void initBody();
 
-        public HttpRequest(HttpExchange httpExchange) {
-            this.httpExchange = httpExchange;
+    HttpExchange getHttpExchange();
+
+    public static boolean isForm(String contentType) {
+        return (contentType.startsWith(CommonContentType.FORM.type()));
+    }
+
+    public static boolean isMultipartFormData(String contentType) {
+        return (contentType.startsWith(CommonContentType.FORM_DATA.type()));
+    }
+
+    public static boolean isJson(String contentType) {
+        return (contentType.startsWith(CommonContentType.JSON.type()));
+    }
+
+    public static boolean isXml(String contentType) {
+        return (contentType.startsWith(CommonContentType.XML.type()));
+    }
+
+    public static Request createReauest(HttpExchange httpExchange) {
+        List<String> strings = httpExchange.getRequestHeaders().get(HeaderKey.CONTENT_TYPE);
+        if (strings == null || strings.isEmpty()) {
+            return httpRequest(httpExchange);
         }
-
-        @Override
-        public String getParamter(String param) {
-            return paramMap.get(param);
-        }
-
-        @Override
-        public String getMethod() {
-            return httpExchange.getRequestMethod().trim().toUpperCase();
-        }
-
-        @Override
-        public URI getReuestURI() {
-            return httpExchange.getRequestURI();
-        }
-
-        @Override
-        public void initRequestParam() {
-            String query = getReuestURI().getQuery();
-            String [] arrayStr = query.split("&");
-            for(String str : arrayStr){
-                paramMap.put(str.split("=")[0], str.split("=")[1]);
-            }
-
-        }
-
-        @Override
-        public void initRequestHeader() {
-            for(String s : httpExchange.getRequestHeaders().keySet()){
-                headMap.put(s, httpExchange.getRequestHeaders().get(s));
-            }
-        }
-
-        @Override
-        public void initRequestBody() {
-            InputStream in = httpExchange.getRequestBody(); // 获得输入流
-            BufferedReader reader = new BufferedReader(new InputStreamReader(in));
-            String temp = null;
-            try {
-                while ((temp = reader.readLine()) != null) {
-                    requestBody += temp;
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-
-        @Override
-        public String getRequestBody() {
-            return requestBody;
+        String s = strings.get(0);
+        if (isMultipartFormData(s)) {
+            return multipartRequest(httpExchange);
+        } else {
+            return httpRequest(httpExchange);
         }
     }
+
+    static Request multipartRequest(HttpExchange httpExchange) {
+        MultipartRequest multipartRequest = new MultipartRequest(httpExchange);
+        multipartRequest.initBody();
+        return multipartRequest;
+    }
+
+    static Request httpRequest(HttpExchange httpExchange) {
+        HttpRequest httpRequest = new HttpRequest(httpExchange);
+        httpRequest.initBody();
+        return httpRequest;
+    }
+
+
 }

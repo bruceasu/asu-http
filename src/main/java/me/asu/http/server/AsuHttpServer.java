@@ -13,9 +13,13 @@ import java.util.*;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import lombok.Data;
+import javax.ws.rs.core.Application;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import me.asu.http.server.filter.ContextFilter;
+import me.asu.http.server.filter.CorsFilter;
+import me.asu.http.server.handler.AsuHttpHandler;
+import me.asu.http.server.handler.AsuStaticHttpHandler;
 import me.asu.util.NamedThreadFactory;
 import me.asu.util.Strings;
 
@@ -25,7 +29,7 @@ import me.asu.util.Strings;
  */
 @Getter
 @Slf4j
-public class AsuHttpServer {
+public class AsuHttpServer extends Application {
 
     /**
      * 线程数，由于不会是很频繁的调用，无需很多
@@ -35,12 +39,11 @@ public class AsuHttpServer {
 
     private transient ThreadPoolExecutor executor;
     private transient Map<String, HttpContext> contextMap = new HashMap<>();
-    private transient List<HttpHandler>        handlers   = new ArrayList<>();
+    private transient List<HttpHandler> handlers = new ArrayList<>();
     private List<String> staticPaths = new ArrayList<>();
     private Path templatePath = Paths.get("templates");
     private boolean debug = false;
     private HttpServerConfig config = new HttpServerConfig();
-
 
 
     public AsuHttpServer(HttpServerConfig config) throws IOException {
@@ -58,9 +61,6 @@ public class AsuHttpServer {
             }
         }
         init();
-
-        //            executor.setCorePoolSize(config.getThreads());
-        //            executor.setMaximumPoolSize(config.getThreads());
     }
 
     public AsuHttpServer() throws IOException {
@@ -68,9 +68,11 @@ public class AsuHttpServer {
     }
 
     private void init() throws IOException {
-        this.httpServer = HttpServer.create(new InetSocketAddress(config.getHost(), config.getPort()), 0);
-        executor = new ThreadPoolExecutor(config.getThreads(), config.getThreads(), 0L, TimeUnit.MILLISECONDS,
-                new LinkedBlockingQueue<>(), new NamedThreadFactory("Http-Worker-"));
+        this.httpServer = HttpServer
+                .create(new InetSocketAddress(config.getHost(), config.getPort()), 0);
+        executor = new ThreadPoolExecutor(config.getThreads(), config.getThreads(), 0L,
+                TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>(),
+                new NamedThreadFactory("Http-Worker-"));
         httpServer.setExecutor(executor);
 
         new AsuStaticHttpHandler(this, config);
@@ -88,10 +90,13 @@ public class AsuHttpServer {
         HttpContext context = getHttpServer().createContext(path, httpHandler);
         getContextMap().put(path, context);
         addHandler(httpHandler);
+        ContextFilter cf  = new ContextFilter();
+        context.getFilters().add(cf);
         CorsFilter filter = new CorsFilter(config);
         context.getFilters().add(filter);
         return context;
     }
+
     /**
      * 启动服务
      *

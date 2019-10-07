@@ -1,13 +1,21 @@
-package me.asu.http.server;
+package me.asu.http.server.handler;
 
 import static org.slf4j.LoggerFactory.getLogger;
 
-import com.sun.net.httpserver.*;
-import java.io.*;
+import com.sun.net.httpserver.Filter;
+import com.sun.net.httpserver.HttpContext;
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpHandler;
+import java.io.Closeable;
+import java.io.IOException;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import me.asu.http.common.HandlerState;
-import me.asu.http.server.ParameterFilter.ParamMap;
+import me.asu.http.server.AsuHttpServer;
+import me.asu.http.server.HttpRequestContext;
+import me.asu.http.server.HttpServerConfig;
+import me.asu.http.server.Request;
 import org.slf4j.Logger;
 
 /**
@@ -20,7 +28,6 @@ public class AsuHttpHandler implements HttpHandler, Closeable, Serializable {
     private static Logger log = getLogger(AsuHttpHandler.class);
 
     private final AsuHttpServer httpServer;
-    private final ParameterFilter filter = new ParameterFilter();
     /**
      * 0: ready, 1: started, 2: shutting down, 3: shutdown
      */
@@ -31,12 +38,10 @@ public class AsuHttpHandler implements HttpHandler, Closeable, Serializable {
     public AsuHttpHandler(AsuHttpServer httpServer, HttpServerConfig config) {
         this.httpServer = httpServer;
 
-        context = this.httpServer.getHttpServer()
-                                             .createContext("/", this);
+        context = this.httpServer.getHttpServer().createContext("/", this);
         this.httpServer.getContextMap().put("/", context);
 
-        context.getFilters().add(filter);
-
+        //        context.getFilters().add(filter);
 
         this.httpServer.getHandlers().add(this);
         run();
@@ -48,15 +53,16 @@ public class AsuHttpHandler implements HttpHandler, Closeable, Serializable {
         if (this.state != HandlerState.STARTED) {
             throw new IllegalStateException("handler 还没有启动。");
         }
-        ParamMap map = (ParamMap) exchange.getAttribute("parameters");
         int statusCode = 200;
         try {
-            String brokerId = map.getParameter("brokerId");
-            String pid = map.getParameter("pid");
-            String webPort = map.getParameter("webPort");
+            HttpRequestContext ctx = HttpRequestContext.get();
+            Request request = ctx.getRequest();
+            String brokerId = request.getParameter("brokerId");
+            String pid = request.getParameter("pid");
+            String webPort = request.getParameter("webPort");
             log.debug("<<< 请求：brokerId:{}, pid: {}, webPort: {}", brokerId, pid, webPort);
 
-            // exchange.
+//            exchange.
         } catch (Exception e) {
             log.error(e.getMessage(), e);
             statusCode = 500;
@@ -114,7 +120,7 @@ public class AsuHttpHandler implements HttpHandler, Closeable, Serializable {
             this.state = HandlerState.SHUTTING_DOWN;
             // cleaning
             if (!this.shutdownHooks.isEmpty()) {
-                this.shutdownHooks.forEach(r->{
+                this.shutdownHooks.forEach(r -> {
                     try {
                         r.run();
                     } catch (Throwable e) {
@@ -125,4 +131,6 @@ public class AsuHttpHandler implements HttpHandler, Closeable, Serializable {
             this.state = HandlerState.SHUTDOWN;
         }
     }
+
+
 }
