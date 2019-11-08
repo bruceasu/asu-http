@@ -10,8 +10,8 @@ import java.io.*;
 import java.util.*;
 import lombok.Data;
 import me.asu.http.common.HeaderKey;
-import me.asu.util.Bytes;
-import me.asu.util.Strings;
+import me.asu.http.util.Bytes;
+import me.asu.http.util.Strings;
 
 public class MultipartRequest extends HttpRequest{
 

@@ -29,7 +29,6 @@ import java.util.List;
 import java.util.Map.Entry;
 import java.util.concurrent.*;
 import lombok.Getter;
-import me.asu.util.NamedThreadFactory;
 
 /**
  * TimeToLiveCache.

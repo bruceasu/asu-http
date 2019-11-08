@@ -3,8 +3,9 @@ package me.asu.http.server;
 import java.io.*;
 import java.net.URL;
 import lombok.extern.slf4j.Slf4j;
-import me.asu.util.PropertiesProxy;
-import me.asu.util.Strings;
+import me.asu.http.util.ApplicationConf;
+import me.asu.http.util.Strings;
+
 
 /**
  * @author suk
@@ -13,8 +14,8 @@ import me.asu.util.Strings;
 @Slf4j
 public class GlobalVariables {
 
-    public static PropertiesProxy APPLICATION_CONF = new PropertiesProxy();
-    public static int    HTTP_NODE_PORT          = 0;
+    public static ApplicationConf APPLICATION_CONF = new ApplicationConf();
+    public static int             HTTP_NODE_PORT   = 0;
 
     public static void loadConfigFile(String configFilePath) throws IOException {
         if (Strings.isNotBlank(configFilePath)) {
@@ -22,7 +23,7 @@ public class GlobalVariables {
             if (configFile.isFile()) {
                 log.info("using config file: {}", configFile);
                 try (FileReader fileReader = new FileReader(configFile)) {
-                    GlobalVariables.APPLICATION_CONF.setPaths(configFile.getAbsolutePath());
+                    GlobalVariables.APPLICATION_CONF.load(fileReader);
                 }
             } else {
                 log.warn("There's no config file, using default value.");

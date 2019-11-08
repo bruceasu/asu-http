@@ -5,7 +5,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ResourceBundle;
-import me.asu.util.Strings;
 
 public class MimeTypeDetector {
     static ResourceBundle resourceBundle = ResourceBundle.getBundle("mime");
