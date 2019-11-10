@@ -46,7 +46,7 @@ public class GlobalVariables {
             if (resource != null) {
                 log.info("using config file: {}", resource);
                 try (InputStream stream = resource.openStream()) {
-                    APPLICATION_CONF.setReader(new InputStreamReader(stream, "utf-8"));
+                    APPLICATION_CONF.load(new InputStreamReader(stream, "utf-8"));
                 }
             } else {
                 log.warn("There's no config file, using default value.");
@@ -54,7 +54,7 @@ public class GlobalVariables {
         } else {
             log.info("using config file: {}", configFile);
             try (FileReader fileReader = new FileReader(configFile)) {
-                APPLICATION_CONF.setReader(fileReader);
+                APPLICATION_CONF.load(fileReader);
             }
         }
     }

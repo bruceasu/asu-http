@@ -11,10 +11,10 @@ import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import me.asu.http.common.HeaderKey;
 import me.asu.http.util.Bytes;
-import me.asu.lang.map.MultiValueMap;
-import me.asu.util.ParseXMLUtils;
-import me.asu.util.io.Streams;
-import org.nutz.json.Json;
+import me.asu.http.util.ParseXMLUtils;
+import me.asu.http.util.Streams;
+import me.asu.http.util.map.MultiValueMap;
+import xyz.calvinwilliams.okjson.OKJSON;
 
 @Slf4j
 public class HttpRequest implements Request {
@@ -62,12 +62,15 @@ public class HttpRequest implements Request {
         initRequestBody();
         if (Request.isForm(contentType)) {
             initFormParam();
-        } else if (Request.isJson(contentType)) {
-            dataMap = Json.fromJson(HashMap.class, getRequestBody());
         } else if (Request.isXml(contentType)) {
-            dataMap = ParseXMLUtils.string2Map(getRequestBody());
+            initXmlData();
         }
 
+    }
+
+    private void initXmlData()
+    {
+        dataMap = ParseXMLUtils.string2Map(getRequestBody());
     }
 
     @Override
@@ -80,6 +83,7 @@ public class HttpRequest implements Request {
         return paramMap;
     }
 
+    @Override
     public MultiValueMap<String, String> getHeadMap() {
         return this.headMap;
     }
@@ -107,6 +111,12 @@ public class HttpRequest implements Request {
     @Override
     public String getRequestBody() {
         return Bytes.toString(requestBody);
+    }
+
+    @Override
+    public <T> T getJson(Class<T> clazz)
+    {
+        return OKJSON.stringToObject(getRequestBody(), clazz, OKJSON.OPTIONS_DIRECT_ACCESS_PROPERTY_ENABLE);
     }
 
     private void initRequestParam() {

@@ -23,9 +23,9 @@ import me.asu.http.server.AsuHttpServer;
 import me.asu.http.server.HttpServerConfig;
 import me.asu.http.server.HttpServerConfig.GzipConfig;
 import me.asu.http.util.MimeTypeDetector;
-import me.asu.util.NamedThreadFactory;
-import me.asu.util.Strings;
-import me.asu.util.io.Streams;
+import me.asu.http.util.NamedThreadFactory;
+import me.asu.http.util.Streams;
+import me.asu.http.util.Strings;
 import org.slf4j.Logger;
 
 /**

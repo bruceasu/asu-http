@@ -5,11 +5,9 @@ import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
 import java.io.IOException;
 import java.net.HttpURLConnection;
-import java.net.URI;
-import java.util.*;
 import me.asu.http.server.HttpServerConfig;
 import me.asu.http.server.HttpServerConfig.CorsConfig;
-import me.asu.util.Strings;
+import me.asu.http.util.Strings;
 
 /**
  * @author suk
@@ -19,39 +17,49 @@ public class CorsFilter extends Filter {
 
     private final HttpServerConfig config;
 
-    public CorsFilter(HttpServerConfig config) {
+    public CorsFilter(HttpServerConfig config)
+    {
         this.config = config;
     }
+
     @Override
-    public String description() {
+    public String description()
+    {
         return "Cors support";
     }
 
     @Override
-    public void doFilter(HttpExchange exchange, Chain chain) throws IOException {
+    public void doFilter(HttpExchange exchange, Chain chain) throws IOException
+    {
         String requestMethod = exchange.getRequestMethod();
         if ("options".equalsIgnoreCase(requestMethod)) {
             if (config.isEnableCors()) {
-                Headers headers = exchange.getResponseHeaders();
+                Headers    headers    = exchange.getResponseHeaders();
                 CorsConfig corsConfig = config.getCorsConfig();
                 if (corsConfig.getAccessControlAllowCredentials() != null) {
-                    headers.set(" Access-Control-Allow-Credentials", corsConfig.getAccessControlAllowCredentials().toString());
+                    headers.set(" Access-Control-Allow-Credentials",
+                            corsConfig.getAccessControlAllowCredentials().toString());
                 }
                 if (Strings.isNotEmpty(corsConfig.getAccessControlAllowOrigin())) {
-                    headers.set("Access-Control-Allow-Origin", corsConfig.getAccessControlAllowOrigin());
+                    headers.set("Access-Control-Allow-Origin",
+                            corsConfig.getAccessControlAllowOrigin());
                 } else {
                     headers.set("Access-Control-Allow-Origin", "*");
                 }
                 if (Strings.isNotEmpty(corsConfig.getAccessControlAllowMethods())) {
-                    headers.set("Access-Control-Allow-Methods", corsConfig.getAccessControlAllowMethods());
+                    headers.set("Access-Control-Allow-Methods",
+                            corsConfig.getAccessControlAllowMethods());
                 } else {
-                    headers.set("Access-Control-Allow-Methods", "OPTIONS, GET, POST, PUT, PATCH, DELETE, HEAD");
+                    headers.set("Access-Control-Allow-Methods",
+                            "OPTIONS, GET, POST, PUT, PATCH, DELETE, HEAD");
                 }
                 if (Strings.isNotEmpty(corsConfig.getAccessControlExposeHeaders())) {
-                    headers.set("Access-Control-Expose-Headers", corsConfig.getAccessControlExposeHeaders());
+                    headers.set("Access-Control-Expose-Headers",
+                            corsConfig.getAccessControlExposeHeaders());
                 }
                 if (corsConfig.getAccessControlMaxAge() != null) {
-                    headers.set("Access-Control-Max-Age", corsConfig.getAccessControlMaxAge().toString());
+                    headers.set("Access-Control-Max-Age",
+                            corsConfig.getAccessControlMaxAge().toString());
                 }
             }
 

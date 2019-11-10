@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Map;
 import me.asu.http.common.CommonContentType;
 import me.asu.http.common.HeaderKey;
-import me.asu.lang.map.MultiValueMap;
+import me.asu.http.util.map.MultiValueMap;
 
 public interface Request {
 
@@ -26,6 +26,8 @@ public interface Request {
     URI getReuestURI();
 
     String getRequestBody();
+
+    <T> T getJson(Class<T> clazz);
 
     void initBody();
 

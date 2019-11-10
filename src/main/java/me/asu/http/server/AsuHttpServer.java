@@ -20,8 +20,8 @@ import me.asu.http.server.filter.ContextFilter;
 import me.asu.http.server.filter.CorsFilter;
 import me.asu.http.server.handler.AsuHttpHandler;
 import me.asu.http.server.handler.AsuStaticHttpHandler;
-import me.asu.util.NamedThreadFactory;
-import me.asu.util.Strings;
+import me.asu.http.util.NamedThreadFactory;
+import me.asu.http.util.Strings;
 
 /**
  * @author suk
