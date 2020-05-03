@@ -36,7 +36,7 @@
             String path = ExampleMain.class.getClassLoader()
                                      .getResource("jul-log.properties")
                                      .getFile();
-            System.setProperty("java.util.logging.config.file", path);
+            System.setProperty("java.util.logging.appCfg.file", path);
             LogManager.getLogManager().readConfiguration();
             or
             InputStream inputStream = LoggerPropreties.class.getClassLoader().getResourceAsStream("jul-log.properties");
@@ -44,19 +44,13 @@
                 LogManager.getLogManager().readConfiguration(inputStream);
                 LogManager.getLogManager().addLogger(logger);  // add Logger for defined in YourMainClass
             }
-            or java -Djava.util.logging.config.file=abc.properties YourMainClass
+            or java -Djava.util.logging.appCfg.file=abc.properties YourMainClass
          -->
         <dependency>
            <groupId>org.slf4j</groupId>
            <artifactId>slf4j-jdk14</artifactId>
            <version>${slf4j.version}</version>
            <scope>test</scope>
-        </dependency>
-          <!-- https://mvnrepository.com/artifact/javax.ws.rs/jsr311-api -->
-        <dependency>
-            <groupId>javax.ws.rs</groupId>
-            <artifactId>jsr311-api</artifactId>
-            <version>1.1.1</version>
         </dependency>
         <dependency>
             <groupId>junit</groupId>

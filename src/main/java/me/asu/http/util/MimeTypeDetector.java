@@ -19,8 +19,13 @@ public class MimeTypeDetector {
         }
         if (Strings.isEmpty(type)) {
             //从最后一个点之后截取字符串
-            String suffix = fileName.substring(fileName.lastIndexOf(".") + 1);
-            type = resourceBundle.getString(suffix);
+            int i = fileName.lastIndexOf(".");
+            if (i == -1) {
+                type = "text/plain";
+            } else {
+                String suffix = fileName.substring(i + 1);
+                type = resourceBundle.getString(suffix);
+            }
         }
 
         return type;

@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package me.asu.http.server;
+package me.asu.http.request;
 
 import java.io.UnsupportedEncodingException;
 import java.util.HashMap;
@@ -32,6 +32,7 @@ import me.asu.http.util.mime.MimeUtility;
  * <p>
  *  <code>param1 = value; param2 = "anything goes; really"; param3</code>
  * </p>
+ * @author suk
  */
 public class ParameterParser {
 
