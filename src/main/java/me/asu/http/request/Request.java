@@ -1,6 +1,7 @@
 package me.asu.http.request;
 
 import com.sun.net.httpserver.HttpExchange;
+import java.io.IOException;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
@@ -28,7 +29,7 @@ public interface Request {
 
     String getRequestBody();
 
-    <T> T getJson(Class<T> clazz);
+    <T> T getJson(Class<T> clazz) throws IOException;
 
     void initBody();
 

@@ -20,8 +20,8 @@ import me.asu.http.request.MethodConstants;
 import me.asu.http.request.Request;
 import me.asu.http.response.Response;
 import me.asu.http.response.ResponseStatus;
+import me.asu.http.util.JsonUtil;
 import org.slf4j.Logger;
-import xyz.calvinwilliams.okjson.OKJSON;
 
 /**
  * @author Suk
@@ -88,7 +88,7 @@ public class RouteHttpHandler extends BaseHttpHandler
                     resp.setCode(200);
                     resp.setBody((byte[])response);
                 } else {
-                    String s = OKJSON.objectToString(response);
+                    String s = JsonUtil.stringify(response);
                     resp.setCode(200);
                     resp.setBody(s);
                     resp.setMimeType("application/json; Charset=UTF-8");

@@ -31,38 +31,37 @@ public class CorsFilter extends Filter {
     @Override
     public void doFilter(HttpExchange exchange, Chain chain) throws IOException
     {
+        if (config.isEnableCors()) {
+            Headers    headers    = exchange.getResponseHeaders();
+            CorsConfig corsConfig = config.getCorsConfig();
+            if (corsConfig.getAccessControlAllowCredentials() != null) {
+                headers.set(" Access-Control-Allow-Credentials",
+                            corsConfig.getAccessControlAllowCredentials().toString());
+            }
+            if (Strings.isNotEmpty(corsConfig.getAccessControlAllowOrigin())) {
+                headers.set("Access-Control-Allow-Origin",
+                            corsConfig.getAccessControlAllowOrigin());
+            } else {
+                headers.set("Access-Control-Allow-Origin", "*");
+            }
+            if (Strings.isNotEmpty(corsConfig.getAccessControlAllowMethods())) {
+                headers.set("Access-Control-Allow-Methods",
+                            corsConfig.getAccessControlAllowMethods());
+            } else {
+                headers.set("Access-Control-Allow-Methods",
+                            "OPTIONS, GET, POST, PUT, PATCH, DELETE, HEAD");
+            }
+            if (Strings.isNotEmpty(corsConfig.getAccessControlExposeHeaders())) {
+                headers.set("Access-Control-Expose-Headers",
+                            corsConfig.getAccessControlExposeHeaders());
+            }
+            if (corsConfig.getAccessControlMaxAge() != null) {
+                headers.set("Access-Control-Max-Age",
+                            corsConfig.getAccessControlMaxAge().toString());
+            }
+        }
         String requestMethod = exchange.getRequestMethod();
         if ("options".equalsIgnoreCase(requestMethod)) {
-            if (config.isEnableCors()) {
-                Headers    headers    = exchange.getResponseHeaders();
-                CorsConfig corsConfig = config.getCorsConfig();
-                if (corsConfig.getAccessControlAllowCredentials() != null) {
-                    headers.set(" Access-Control-Allow-Credentials",
-                            corsConfig.getAccessControlAllowCredentials().toString());
-                }
-                if (Strings.isNotEmpty(corsConfig.getAccessControlAllowOrigin())) {
-                    headers.set("Access-Control-Allow-Origin",
-                            corsConfig.getAccessControlAllowOrigin());
-                } else {
-                    headers.set("Access-Control-Allow-Origin", "*");
-                }
-                if (Strings.isNotEmpty(corsConfig.getAccessControlAllowMethods())) {
-                    headers.set("Access-Control-Allow-Methods",
-                            corsConfig.getAccessControlAllowMethods());
-                } else {
-                    headers.set("Access-Control-Allow-Methods",
-                            "OPTIONS, GET, POST, PUT, PATCH, DELETE, HEAD");
-                }
-                if (Strings.isNotEmpty(corsConfig.getAccessControlExposeHeaders())) {
-                    headers.set("Access-Control-Expose-Headers",
-                            corsConfig.getAccessControlExposeHeaders());
-                }
-                if (corsConfig.getAccessControlMaxAge() != null) {
-                    headers.set("Access-Control-Max-Age",
-                            corsConfig.getAccessControlMaxAge().toString());
-                }
-            }
-
             exchange.sendResponseHeaders(HttpURLConnection.HTTP_NO_CONTENT, -1);
             return;
         }

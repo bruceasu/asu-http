@@ -41,24 +41,27 @@ public class Application
     private           AppConfig                config       = new AppConfig();
     private Actions actions = Actions.getInstance();
 
-    private void init() throws IOException {
-        // 有顺序要求
+    protected void init() throws IOException {
         createExecutor();
         createHttpServer();
-        {
-            StaticHttpHandler staticHttpHandler = new StaticHttpHandler(this, config);
-            String path = staticHttpHandler.getContextPath();
-            HttpContext context = registerHandlerWithContextPath(path, staticHttpHandler);
-            staticHttpHandler.setCtx(context);
+        addStaticHandler();
+        addRouteHandler();
+    }
 
-        }
+    private void addRouteHandler()
+    {
+        RouteHttpHandler routeHttpHandler = new RouteHttpHandler(this, config);
+        String path = "/";
+        HttpContext context = registerHandlerWithContextPath(path, routeHttpHandler);
+        routeHttpHandler.setCtx(context);
+    }
 
-        {
-            RouteHttpHandler routeHttpHandler = new RouteHttpHandler(this, config);
-            String path = "/";
-            HttpContext context = registerHandlerWithContextPath(path, routeHttpHandler);
-            routeHttpHandler.setCtx(context);
-        }
+    private void addStaticHandler()
+    {
+        StaticHttpHandler staticHttpHandler = new StaticHttpHandler(this, config);
+        String path = staticHttpHandler.getContextPath();
+        HttpContext context = registerHandlerWithContextPath(path, staticHttpHandler);
+        staticHttpHandler.setCtx(context);
     }
 
     private void createExecutor()
@@ -73,11 +76,6 @@ public class Application
         InetSocketAddress address = new InetSocketAddress(config.getHost(), config.getPort());
         httpServer = HttpServer.create(address, 0);
         httpServer.setExecutor(executor);
-    }
-
-    public static Actions getInstance()
-    {
-        return Actions.getInstance();
     }
 
     public void addActions(Map<String, Action> a)
@@ -105,7 +103,7 @@ public class Application
         return actions.getAction(uri);
     }
 
-    public HttpContext registerHandlerWithContextPath(String path, HttpHandler httpHandler) {
+    public HttpContext registerHandlerWithContextPath(String path, HttpHandler httpHandler){
         HttpContext context = getHttpServer().createContext(path, httpHandler);
         getContextMap().put(path, context);
         getHandlers().add(httpHandler);
@@ -134,7 +132,7 @@ public class Application
             }
 
             if (config.getThreads() < 1) {
-                config.setThreads(AppConfig.DEAFULT_THREADS);
+                config.setThreads(AppConfig.DEFAULT_THREADS);
             }
         }
         return  run();
@@ -161,7 +159,7 @@ public class Application
      */
     public void shutdown() {
         if (executor != null) {
-            executor.shutdown();
+            executor.shutdownNow();
             executor = null;
         }
         if (httpServer != null) {

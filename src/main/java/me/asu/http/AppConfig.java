@@ -9,26 +9,23 @@ import lombok.Data;
 @Data
 public class AppConfig
 {
-    public static final int DEAFULT_THREADS = Math.max(200, 32 * Runtime.getRuntime().availableProcessors());
-    public static final int DEFAULT_PORT = 8000;
+    public static final int DEFAULT_THREADS = Math.max(200, 32 * Runtime.getRuntime().availableProcessors());
+    public static final int DEFAULT_PORT    = 8000;
     public static final String DEFAULT_HOST = "0.0.0.0";
 
-    int port = DEFAULT_PORT;
-    String host = DEFAULT_HOST;
-    int threads = DEAFULT_THREADS;
+    int    port    = DEFAULT_PORT;
+    String host    = DEFAULT_HOST;
+    int    threads = DEFAULT_THREADS;
 
     Charset bodyEncoding = StandardCharsets.UTF_8;
-    Charset uriEncoding = StandardCharsets.UTF_8;
+    Charset uriEncoding  = StandardCharsets.UTF_8;
 
     String staticPath;
     String staticContextPath = "/static";
 
-    String templatePath;
-
-    boolean debug = false;
-
     boolean enableGzip = false;
     final GzipConfig gzipConfig = new GzipConfig();
+
     @Data
     public class GzipConfig {
         long minLengthUsingGzip = 2048000;
@@ -41,13 +38,14 @@ public class AppConfig
             gzipMime.add("text/js");
             gzipMime.add("text/javascript");
             gzipMime.add("application/x-javascript");
-            gzipMime.add("application/x-josn");
+            gzipMime.add("application/x-json");
             gzipMime.add("application/json");
         }
     }
 
     boolean enableCors = false;
     final CorsConfig corsConfig = new CorsConfig();
+
     @Data
     public class CorsConfig {
         /** 该字段必填。它的值要么是请求时Origin字段的具体值，要么是一个*，表示接受任意域名的请求。 */

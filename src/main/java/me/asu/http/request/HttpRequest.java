@@ -10,12 +10,8 @@ import java.util.HashMap;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import me.asu.http.common.HeaderKey;
-import me.asu.http.util.Bytes;
-import me.asu.http.util.ParseXMLUtils;
-import me.asu.http.util.Streams;
-import me.asu.http.util.Strings;
+import me.asu.http.util.*;
 import me.asu.http.util.map.MultiValueMap;
-import xyz.calvinwilliams.okjson.OKJSON;
 
 @Slf4j
 public class HttpRequest implements Request {
@@ -129,9 +125,9 @@ public class HttpRequest implements Request {
     }
 
     @Override
-    public <T> T getJson(Class<T> clazz)
+    public <T> T getJson(Class<T> clazz) throws IOException
     {
-        return OKJSON.stringToObject(getRequestBody(), clazz, OKJSON.OPTIONS_DIRECT_ACCESS_PROPERTY_ENABLE);
+        return JsonUtil.toJson(getRequestBody(), clazz);
     }
 
     private void initRequestParam() {
