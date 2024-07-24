@@ -14,6 +14,8 @@ import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URLDecoder;
+import java.util.HashMap;
+import java.util.Map;
 
 @Slf4j
 public class HttpRequest implements Request {
@@ -33,10 +35,10 @@ public class HttpRequest implements Request {
      */
     private ParamMap bodyMap = new ParamMap();
 
-//    /**
-//     * xml or json parse result
-//     */
-//    private Map<String, Object> dataMap = new HashMap<>();
+    /**
+     * xml or json parse result
+     */
+    private Map<String, Object> dataMap = new HashMap<>();
 
     /**
      * header
@@ -57,15 +59,14 @@ public class HttpRequest implements Request {
 
     @Override
     public void initBody() {
-        String contentType = getHeadMap().getValue(HeaderKey.CONTENT_TYPE);
         initRequestBody();
-        if (Request.isForm(contentType)) {
+        if (isForm()) {
             initFormParam();
-//        } else if (Request.isXml(contentType)) {
+//        } else if (isXml()) {
             // 通常xml是要转成对象，转成Map的可能很少
 //            initXmlData();
-//        } else if (Request.isJson(contentType)){
-            // 通常json是要转成对象，转成Map的可能很少
+//        } else if (isJson()) {
+//            // 通常json是要转成对象，转成Map的可能很少
 //            initJsonData();
         } else {
             // 当作是普通请求
@@ -73,15 +74,18 @@ public class HttpRequest implements Request {
 
     }
 
+    @Override
+    public String contentType() {
+        return getHeadMap().getValue(HeaderKey.CONTENT_TYPE);
+    }
 //    private void initXmlData()
 //    {
 //        dataMap = ParseXMLUtils.string2Map(getRequestBody());
 //    }
-//
-//    private void initJsonData() throws IOException
-//    {
-//        dataMap = JsonUtil.toMap(getRequestBody());
-//    }
+
+    private void initJsonData() {
+        dataMap = JsonUtil.toMap(getRequestBody());
+    }
 
     @Override
     public HttpExchange getHttpExchange() {

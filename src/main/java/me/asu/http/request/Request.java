@@ -11,26 +11,30 @@ import java.util.List;
 
 public interface Request {
 
-
-    public static boolean isForm(String contentType) {
-        return (contentType != null && contentType.startsWith(CommonContentType.FORM.type()));
-    }
-
-    public static boolean isMultipartFormData(String contentType) {
+    static boolean isMultipartFormData( String contentType) {
         return (contentType != null && contentType.startsWith(CommonContentType.FORM_DATA.type()));
     }
 
-    public static boolean isJson(String contentType) {
+    default boolean isForm() {
+        String contentType = contentType();
+        return (contentType != null && contentType.startsWith(CommonContentType.FORM.type()));
+    }
+
+    default boolean isJson() {
+        String contentType = contentType();
         return (contentType != null && contentType.startsWith(CommonContentType.JSON.type()));
     }
 
-    public static boolean isXml(String contentType) {
+    default boolean isXml() {
+        String contentType = contentType();
         return (contentType != null && contentType.startsWith(CommonContentType.XML.type()));
     }
 
+    String contentType();
+
 //    Map<String, Object> getDataMap();
 
-    public static Request createRequest(HttpExchange httpExchange) {
+    static Request createRequest(HttpExchange httpExchange) {
         List<String> strings = httpExchange.getRequestHeaders().get(HeaderKey.CONTENT_TYPE);
         if (strings == null || strings.isEmpty()) {
             return httpRequest(httpExchange);

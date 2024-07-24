@@ -47,7 +47,13 @@ public class Application {
     private AppConfig config = new AppConfig();
     private RouteHttpHandler routeHttpHandler;
     private StaticHttpHandler staticHttpHandler;
-
+    public Application( AppConfig config) throws IOException {
+        this.config = config;
+        createExecutor();
+        createHttpServer();
+        addStaticHandler();
+        addRouteHandler();
+    }
     public Application() throws IOException {
         createExecutor();
         createHttpServer();
