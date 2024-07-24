@@ -1,20 +1,21 @@
 package me.asu.http.handler;
 
-import static org.slf4j.LoggerFactory.getLogger;
-
 import com.sun.net.httpserver.Filter;
 import com.sun.net.httpserver.HttpContext;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
+import me.asu.http.AppConfig;
+import me.asu.http.Application;
+import org.slf4j.Logger;
+
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.Serializable;
 import java.net.HttpURLConnection;
 import java.util.ArrayList;
 import java.util.List;
-import me.asu.http.AppConfig;
-import me.asu.http.Application;
-import org.slf4j.Logger;
+
+import static org.slf4j.LoggerFactory.getLogger;
 
 /**
  * @author Suk
@@ -22,17 +23,16 @@ import org.slf4j.Logger;
  */
 public abstract class BaseHttpHandler implements HttpHandler, Closeable, Serializable {
 
-    private static final long        serialVersionUID = 2920606245741371534L;
-    private static       Logger      log = getLogger(BaseHttpHandler.class);
-    protected            Application app;
-
+    private static final long serialVersionUID = 2920606245741371534L;
+    private static Logger log = getLogger(BaseHttpHandler.class);
+    protected Application app;
+    protected List<Runnable> shutdownHooks = new ArrayList<>();
+    protected HttpContext ctx;
+    protected AppConfig appCfg;
     /**
      * 0: ready, 1: started, 2: shutting down, 3: shutdown
      */
-    transient HandlerState   state = HandlerState.READY;
-    protected List<Runnable> shutdownHooks = new ArrayList<>();
-    protected HttpContext    ctx;
-    protected AppConfig      appCfg;
+    transient HandlerState state = HandlerState.READY;
 
     public AppConfig getAppCfg() {
         return appCfg;

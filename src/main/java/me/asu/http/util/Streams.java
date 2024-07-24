@@ -8,13 +8,14 @@ import java.util.List;
 /**
  * 提供了一组创建 Reader/Writer/InputStream/OutputStream 的便利函数
  *
- * @author zozoh(zozohtnt@gmail.com)
- * @author Wendal(wendal1985@gmail.com)
- * @author bonyfish(mc02cxj@gmail.com)
+ * @author zozoh(zozohtnt @ gmail.com)
+ * @author Wendal(wendal1985 @ gmail.com)
+ * @author bonyfish(mc02cxj @ gmail.com)
  */
 public abstract class Streams {
 
     private static final int BUF_SIZE = 8192;
+    private static final byte[] UTF_BOM = new byte[]{(byte) 0xEF, (byte) 0xBB, (byte) 0xBF};
 
     /**
      * 判断两个输入流是否严格相等
@@ -402,6 +403,7 @@ public abstract class Streams {
     public static Reader fileInr(String path, String charset) {
         return fileInr(new File(path), charset);
     }
+
     /**
      * 根据一个文件路径建立一个 UTF-8 文本输入流 <b>警告!! 本方法会预先读取3个字节以判断该文件是否存在BOM头</b>
      * <p/>
@@ -424,8 +426,6 @@ public abstract class Streams {
             return new InputStreamReader(utf8filte(is));
         }
     }
-
-    private static final byte[] UTF_BOM = new byte[]{(byte) 0xEF, (byte) 0xBB, (byte) 0xBF};
 
     /**
      * 判断并移除UTF-8的BOM头
@@ -539,12 +539,12 @@ public abstract class Streams {
         if (in == null) {
             return list;
         }
-        try(BufferedReader buffr = buffr(utf8r(in))) {
+        try (BufferedReader buffr = buffr(utf8r(in))) {
             String line;
-            while ((line = buffr.readLine()) != null){
+            while ((line = buffr.readLine()) != null) {
                 list.add(line);
             }
-        } catch(IOException e) {
+        } catch (IOException e) {
 
         } finally {
             safeClose(in);
@@ -557,12 +557,12 @@ public abstract class Streams {
         if (reader == null) {
             return list;
         }
-        try(BufferedReader buffr = buffr(reader)) {
+        try (BufferedReader buffr = buffr(reader)) {
             String line;
-            while ((line = buffr.readLine()) != null){
+            while ((line = buffr.readLine()) != null) {
                 list.add(line);
             }
-        } catch(IOException e) {
+        } catch (IOException e) {
 
         } finally {
             safeClose(reader);

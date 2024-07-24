@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-        xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xmlns="http://maven.apache.org/POM/4.0.0"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>me.asu</groupId>
@@ -33,9 +33,9 @@
             <scope>provided</scope>
         </dependency>
         <dependency>
-                <groupId>org.slf4j</groupId>
-                <artifactId>slf4j-api</artifactId>
-                <version>${slf4j.version}</version>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>${slf4j.version}</version>
         </dependency>
         <!-- 
             using jdk logger for test
@@ -43,10 +43,10 @@
             String path = ExampleMain.class.getClassLoader()
                                      .getResource("jul-log.properties")
                                      .getFile();
-            System.setProperty("java.util.logging.appCfg.file", path);
+            System.setProperty("java.util.logging.config.file", path);
             LogManager.getLogManager().readConfiguration();
             or
-            InputStream inputStream = LoggerPropreties.class.getClassLoader().getResourceAsStream("jul-log.properties");
+            InputStream inputStream = LoggerProperties.class.getClassLoader().getResourceAsStream("jul-log.properties");
             if (inputStream != null) {
                 LogManager.getLogManager().readConfiguration(inputStream);
                 LogManager.getLogManager().addLogger(logger);  // add Logger for defined in YourMainClass
@@ -54,10 +54,10 @@
             or java -Djava.util.logging.appCfg.file=abc.properties YourMainClass
          -->
         <dependency>
-           <groupId>org.slf4j</groupId>
-           <artifactId>slf4j-jdk14</artifactId>
-           <version>${slf4j.version}</version>
-           <scope>test</scope>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-jdk14</artifactId>
+            <version>${slf4j.version}</version>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>junit</groupId>
@@ -131,12 +131,12 @@
                     </archive>
                     <!-- 由具体的项目自己指定 -->
                     <!--<excludes>-->
-                        <!--<exclude>**/*.properties</exclude>-->
-                        <!--<exclude>**/*.xml</exclude>-->
-                        <!--<exclude>**/*.json</exclude>-->
-                        <!--<exclude>**/*.groovy</exclude>-->
-                        <!--<exclude>**/*.py</exclude>-->
-                        <!--<exclude>**/*.jar</exclude>-->
+                    <!--<exclude>**/*.properties</exclude>-->
+                    <!--<exclude>**/*.xml</exclude>-->
+                    <!--<exclude>**/*.json</exclude>-->
+                    <!--<exclude>**/*.groovy</exclude>-->
+                    <!--<exclude>**/*.py</exclude>-->
+                    <!--<exclude>**/*.jar</exclude>-->
                     <!--</excludes>-->
                 </configuration>
             </plugin>
@@ -202,55 +202,55 @@
                     <skip>${maven.test.skip}</skip>
                 </configuration>
             </plugin>
-<!--            <plugin>-->
-<!--                <groupId>org.apache.maven.plugins</groupId>-->
-<!--                <artifactId>maven-assembly-plugin</artifactId>-->
-<!--                <configuration>-->
-<!--                    <archive>-->
-<!--                        <manifest>-->
-<!--                            <mainClass></mainClass>-->
-<!--                        </manifest>-->
-<!--                    </archive>-->
-<!--                    <descriptorRefs>-->
-<!--                        <descriptorRef>jar-with-dependencies</descriptorRef>-->
-<!--                    </descriptorRefs>-->
-<!--                </configuration>-->
-<!--                <executions>-->
-<!--                    <execution>-->
-<!--                        <id>make-assembly</id>-->
-<!--                        <phase>package</phase>-->
-<!--                        <goals>-->
-<!--                            <goal>single</goal>-->
-<!--                        </goals>-->
-<!--                    </execution>-->
-<!--                </executions>-->
-<!--            </plugin>-->
+            <!--            <plugin>-->
+            <!--                <groupId>org.apache.maven.plugins</groupId>-->
+            <!--                <artifactId>maven-assembly-plugin</artifactId>-->
+            <!--                <configuration>-->
+            <!--                    <archive>-->
+            <!--                        <manifest>-->
+            <!--                            <mainClass></mainClass>-->
+            <!--                        </manifest>-->
+            <!--                    </archive>-->
+            <!--                    <descriptorRefs>-->
+            <!--                        <descriptorRef>jar-with-dependencies</descriptorRef>-->
+            <!--                    </descriptorRefs>-->
+            <!--                </configuration>-->
+            <!--                <executions>-->
+            <!--                    <execution>-->
+            <!--                        <id>make-assembly</id>-->
+            <!--                        <phase>package</phase>-->
+            <!--                        <goals>-->
+            <!--                            <goal>single</goal>-->
+            <!--                        </goals>-->
+            <!--                    </execution>-->
+            <!--                </executions>-->
+            <!--            </plugin>-->
 
-<!--                <plugin>-->
-<!--                    <groupId>org.apache.maven.plugins</groupId>-->
-<!--                    <artifactId>maven-shade-plugin</artifactId>-->
-<!--                    <executions>-->
-<!--                        <execution>-->
-<!--                            <phase>package</phase>-->
-<!--                            <goals>-->
-<!--                                <goal>shade</goal>-->
-<!--                            </goals>-->
-<!--                            <configuration>-->
-<!--                                <transformers>-->
-<!--                                    <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">-->
-<!--                                        <mainClass>com.xxg.Main</mainClass>-->
-<!--                                    </transformer>-->
-<!--                                    <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">-->
-<!--                                        <resource>META-INF/spring.handlers</resource>-->
-<!--                                    </transformer>-->
-<!--                                    <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">-->
-<!--                                        <resource>META-INF/spring.schemas</resource>-->
-<!--                                    </transformer>-->
-<!--                                </transformers>-->
-<!--                            </configuration>-->
-<!--                        </execution>-->
-<!--                    </executions>-->
-<!--                </plugin>-->
+            <!--                <plugin>-->
+            <!--                    <groupId>org.apache.maven.plugins</groupId>-->
+            <!--                    <artifactId>maven-shade-plugin</artifactId>-->
+            <!--                    <executions>-->
+            <!--                        <execution>-->
+            <!--                            <phase>package</phase>-->
+            <!--                            <goals>-->
+            <!--                                <goal>shade</goal>-->
+            <!--                            </goals>-->
+            <!--                            <configuration>-->
+            <!--                                <transformers>-->
+            <!--                                    <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">-->
+            <!--                                        <mainClass>com.xxg.Main</mainClass>-->
+            <!--                                    </transformer>-->
+            <!--                                    <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">-->
+            <!--                                        <resource>META-INF/spring.handlers</resource>-->
+            <!--                                    </transformer>-->
+            <!--                                    <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">-->
+            <!--                                        <resource>META-INF/spring.schemas</resource>-->
+            <!--                                    </transformer>-->
+            <!--                                </transformers>-->
+            <!--                            </configuration>-->
+            <!--                        </execution>-->
+            <!--                    </executions>-->
+            <!--                </plugin>-->
 
         </plugins>
     </build>

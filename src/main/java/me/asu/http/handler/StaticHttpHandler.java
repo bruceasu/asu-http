@@ -1,9 +1,17 @@
 package me.asu.http.handler;
 
-import static org.slf4j.LoggerFactory.getLogger;
-
 import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
+import me.asu.http.AppConfig;
+import me.asu.http.AppConfig.GzipConfig;
+import me.asu.http.Application;
+import me.asu.http.request.MethodConstants;
+import me.asu.http.util.MimeTypeDetector;
+import me.asu.http.util.NamedThreadFactory;
+import me.asu.http.util.Streams;
+import me.asu.http.util.Strings;
+import org.slf4j.Logger;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -18,25 +26,17 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.zip.GZIPOutputStream;
-import me.asu.http.AppConfig;
-import me.asu.http.AppConfig.GzipConfig;
-import me.asu.http.Application;
-import me.asu.http.request.MethodConstants;
-import me.asu.http.util.MimeTypeDetector;
-import me.asu.http.util.NamedThreadFactory;
-import me.asu.http.util.Streams;
-import me.asu.http.util.Strings;
-import org.slf4j.Logger;
+
+import static org.slf4j.LoggerFactory.getLogger;
 
 /**
  * @author Suk
  * @since 2018/10/25
  */
-public class StaticHttpHandler extends BaseHttpHandler
-{
+public class StaticHttpHandler extends BaseHttpHandler {
 
-    private static final long serialVersionUID = 3817147817164555854L;
     public static final int DEFAULT_THREADS = Math.max(16, 8 * Runtime.getRuntime().availableProcessors());
+    private static final long serialVersionUID = 3817147817164555854L;
     private static Logger log = getLogger(StaticHttpHandler.class);
     private String contextPath = "/static";
     private String resourcePath;
@@ -95,24 +95,40 @@ public class StaticHttpHandler extends BaseHttpHandler
 
     }
 
-    public String getContextPath()
-    {
+    public String getContextPath() {
         return contextPath;
     }
 
-    public void setContextPath(String contextPath)
-    {
+    public void setContextPath(String contextPath) {
         this.contextPath = contextPath;
     }
 
-    public String getResourcePath()
-    {
+    public String getResourcePath() {
         return resourcePath;
     }
 
-    public void setResourcePath(String resourcePath)
-    {
+    public void setResourcePath(String resourcePath) {
         this.resourcePath = resourcePath;
+    }
+
+    protected void notModified304(HttpExchange exchange) throws IOException {
+        exchange.sendResponseHeaders(HttpURLConnection.HTTP_NOT_MODIFIED, -1);
+    }
+
+    protected void notFound404(HttpExchange exchange) throws IOException {
+        exchange.sendResponseHeaders(HttpURLConnection.HTTP_NOT_FOUND, -1);
+    }
+
+    protected void noContent204(HttpExchange exchange) throws IOException {
+        exchange.sendResponseHeaders(HttpURLConnection.HTTP_NO_CONTENT, -1);
+    }
+
+    protected void badRequest400(HttpExchange exchange) throws IOException {
+        exchange.sendResponseHeaders(HttpURLConnection.HTTP_BAD_REQUEST, 0);
+    }
+
+    protected void error500(HttpExchange exchange) throws IOException {
+        exchange.sendResponseHeaders(HttpURLConnection.HTTP_INTERNAL_ERROR, 0);
     }
 
     class SendFile implements Runnable {
@@ -124,13 +140,14 @@ public class StaticHttpHandler extends BaseHttpHandler
             this.exchange = exchange;
             this.path = path;
         }
+
         @Override
         public void run() {
             if (!Files.isRegularFile(path)) {
                 try {
                     exchange.sendResponseHeaders(HttpURLConnection.HTTP_NOT_FOUND, -1);
                 } catch (IOException e) {
-                   log.error("", e);
+                    log.error("", e);
                 }
                 return;
             }
@@ -176,9 +193,9 @@ public class StaticHttpHandler extends BaseHttpHandler
                                         || strings.contains("GZIP");
                     }
                     GzipConfig gzipConfig = StaticHttpHandler.this.getAppCfg()
-                                                                  .getGzipConfig();
+                            .getGzipConfig();
                     if (acceptGzip && StaticHttpHandler.this.getAppCfg()
-                                                            .isEnableGzip()
+                            .isEnableGzip()
                             && file.length() > gzipConfig.getMinLengthUsingGzip()
                             && gzipConfig.getGzipMime().contains(mime)) {
                         headers.set("Content-Encoding", "gzip");
@@ -201,26 +218,6 @@ public class StaticHttpHandler extends BaseHttpHandler
                 exchange.close();
             }
         }
-    }
-
-    protected void notModified304(HttpExchange exchange) throws IOException {
-        exchange.sendResponseHeaders(HttpURLConnection.HTTP_NOT_MODIFIED, -1);
-    }
-
-    protected void notFound404(HttpExchange exchange) throws IOException {
-        exchange.sendResponseHeaders(HttpURLConnection.HTTP_NOT_FOUND, -1);
-    }
-
-    protected void noContent204(HttpExchange exchange) throws IOException {
-        exchange.sendResponseHeaders(HttpURLConnection.HTTP_NO_CONTENT, -1);
-    }
-
-    protected void badRequest400(HttpExchange exchange) throws IOException {
-        exchange.sendResponseHeaders(HttpURLConnection.HTTP_BAD_REQUEST, 0);
-    }
-
-    protected void error500(HttpExchange exchange) throws IOException {
-        exchange.sendResponseHeaders(HttpURLConnection.HTTP_INTERNAL_ERROR, 0);
     }
 
 }

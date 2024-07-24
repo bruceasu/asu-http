@@ -1,9 +1,10 @@
 package me.asu.http.util;
 
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * @author Suk.
@@ -14,10 +15,10 @@ public class NamedThreadFactory implements ThreadFactory {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(NamedThreadFactory.class);
     private final AtomicInteger id;
-    private final String        name;
-    private final boolean       daemon;
-    private final int           priority;
-    private final ThreadGroup   group;
+    private final String name;
+    private final boolean daemon;
+    private final int priority;
+    private final ThreadGroup group;
 
     public NamedThreadFactory(String name) {
         this(name, false, 5);

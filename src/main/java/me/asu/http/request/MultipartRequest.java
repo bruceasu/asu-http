@@ -1,19 +1,19 @@
 package me.asu.http.request;
 
-import static me.asu.http.common.HeaderKey.ATTACHMENT;
-import static me.asu.http.common.HeaderKey.CONTENT_DISPOSITION;
-import static me.asu.http.common.HeaderKey.CONTENT_TYPE;
-import static me.asu.http.common.HeaderKey.FORM_DATA;
-
 import com.sun.net.httpserver.HttpExchange;
-import java.io.*;
-import java.util.*;
 import lombok.Data;
+import lombok.Getter;
 import me.asu.http.common.HeaderKey;
 import me.asu.http.util.Bytes;
 import me.asu.http.util.Strings;
 
-public class MultipartRequest extends HttpRequest{
+import java.io.*;
+import java.util.*;
+
+import static me.asu.http.common.HeaderKey.*;
+
+@Getter
+public class MultipartRequest extends HttpRequest {
 
     /**
      * The Carriage Return ASCII character value.
@@ -68,10 +68,32 @@ public class MultipartRequest extends HttpRequest{
     byte[] boundary;
     byte[] endBoundary;
     byte[] spBoundary;
+
     public MultipartRequest(HttpExchange httpExchange) {
         super(httpExchange);
         String contentType = getHeadMap().getValue(HeaderKey.CONTENT_TYPE);
         boundary = getBoundary(contentType);
+    }
+
+    /**
+     * Compares <code>count</code> first bytes in the arrays
+     * <code>a</code> and <code>b</code>.
+     *
+     * @param a     The first array to compare.
+     * @param b     The second array to compare.
+     * @param count How many bytes should be compared.
+     * @return <code>true</code> if <code>count</code> first bytes in arrays
+     * <code>a</code> and <code>b</code> are equal.
+     */
+    public static boolean arrayequals(byte[] a,
+                                      byte[] b,
+                                      int count) {
+        for (int i = 0; i < count; i++) {
+            if (a[i] != b[i]) {
+                return false;
+            }
+        }
+        return true;
     }
 
     @Override
@@ -85,7 +107,7 @@ public class MultipartRequest extends HttpRequest{
 
         endBoundary = new byte[spBoundary.length + 2];
         System.arraycopy(spBoundary, 0, endBoundary, 0, spBoundary.length);
-        System.arraycopy(STREAM_TERMINATOR, 0, endBoundary, spBoundary.length,2);
+        System.arraycopy(STREAM_TERMINATOR, 0, endBoundary, spBoundary.length, 2);
         parse();
     }
 
@@ -94,14 +116,13 @@ public class MultipartRequest extends HttpRequest{
      *
      * @param contentType The value of the content type header from which to
      *                    extract the boundary value.
-     *
      * @return The boundary, as a byte array.
      */
     protected byte[] getBoundary(String contentType) {
         ParameterParser parser = new ParameterParser();
         parser.setLowerCaseNames(true);
         // Parameter parser can handle null input
-        Map<String, String> params = parser.parse(contentType, new char[] {';', ','});
+        Map<String, String> params = parser.parse(contentType, new char[]{';', ','});
         String boundaryStr = params.get("boundary");
 
         if (boundaryStr == null) {
@@ -122,6 +143,7 @@ public class MultipartRequest extends HttpRequest{
 
     /**
      * Returns the given content-disposition headers file name.
+     *
      * @param pContentDisposition The content-disposition headers value.
      * @return The file name
      */
@@ -155,7 +177,6 @@ public class MultipartRequest extends HttpRequest{
      * header.
      *
      * @param headers A <code>Map</code> containing the HTTP request headers.
-     *
      * @return The field name for the current <code>encapsulation</code>.
      */
     private String getFieldName(Map<String, String> headers) {
@@ -165,6 +186,7 @@ public class MultipartRequest extends HttpRequest{
     /**
      * Returns the field name, which is given by the content-disposition
      * header.
+     *
      * @param pContentDisposition The content-dispositions header value.
      * @return The field jake
      */
@@ -193,24 +215,24 @@ public class MultipartRequest extends HttpRequest{
      * Content-Length: 60408
      * Content-Type:multipart/form-data; boundary=--ZnGpDtePMx0KrHh_G0X99Yef9r8JZsRJSXC
      * Host: www.111cn.net
-     *
+     * <p>
      * --ZnGpDtePMx0KrHh_G0X99Yef9r8JZsRJSXC
      * Content-Disposition: form-data;name=”desc”
      * Content-Type: text/plain; charset=UTF-8
      * Content-Transfer-Encoding: 8bit
-     *
+     * <p>
      * [……][……][……][……]………………………
      * --ZnGpDtePMx0KrHh_G0X99Yef9r8JZsRJSXC
      * Content-Disposition: form-data;name=”pic”; filename=”photo.jpg”
      * Content-Type: application/octet-stream
      * Content-Transfer-Encoding: binary
-     *
+     * <p>
      * [图片二进制数据]
      * --ZnGpDtePMx0KrHh_G0X99Yef9r8JZsRJSXC--
      */
     private void parse() {
-        try ( InputStream is = getHttpExchange().getRequestBody();
-              BufferedInputStream bis = new BufferedInputStream(is);) {
+        try (InputStream is = getHttpExchange().getRequestBody();
+             BufferedInputStream bis = new BufferedInputStream(is);) {
             byte[] buffer = new byte[1024];
             int length = 0;
             OutputStream os = null;
@@ -228,7 +250,7 @@ public class MultipartRequest extends HttpRequest{
             while (true) {
                 // 处理 headers
                 if (step == 1) {
-                    int index = findIndx(bytes, HEADER_SEPARATOR);
+                    int index = findIndex(bytes, HEADER_SEPARATOR);
                     if (index == -1) {
                         // 头部还每有结束
                         currentBuffer.reset();
@@ -246,9 +268,9 @@ public class MultipartRequest extends HttpRequest{
                     }
                 }
 
-                if (step ==2 ) {
-                    int index = findIndx(bytes, spBoundary);
-                    boolean last = findIndx(bytes, endBoundary) != -1;
+                if (step == 2) {
+                    int index = findIndex(bytes, spBoundary);
+                    boolean last = findIndex(bytes, endBoundary) != -1;
 
                     if (index == -1) {
                         currentBuffer.reset();
@@ -264,7 +286,7 @@ public class MultipartRequest extends HttpRequest{
                         current = new MultipartItem();
                         // new part
                         step = 1;
-                        if(last) {
+                        if (last) {
                             break;
                         }
                     }
@@ -281,7 +303,7 @@ public class MultipartRequest extends HttpRequest{
         bytes = new byte[bytes.length - index - boundary.length];
 
         System.arraycopy(origin, 0, body, 0, body.length);
-        System.arraycopy(origin, index + boundary.length , bytes, 0, bytes.length);
+        System.arraycopy(origin, index + boundary.length, bytes, 0, bytes.length);
         // process body
         if (current.getType() == MultipartItem.FORM) {
             current.setValue(Bytes.toString(body));
@@ -294,7 +316,7 @@ public class MultipartRequest extends HttpRequest{
 
     private byte[] processHeaders(byte[] bytes, int index, MultipartItem current) {
         byte[] origin = bytes;
-        byte[] headers = new byte[index-2]; // 开头是\r\n ，删除
+        byte[] headers = new byte[index - 2]; // 开头是\r\n ，删除
         bytes = new byte[bytes.length - index - 4];
         System.arraycopy(origin, 2, headers, 0, headers.length);
         System.arraycopy(origin, index + 4, bytes, 0, bytes.length);
@@ -316,7 +338,7 @@ public class MultipartRequest extends HttpRequest{
 
     private byte[] skipPreamble(ByteArrayOutputStream currentBuffer) {
         byte[] bytes = currentBuffer.toByteArray();
-        int idx = findIndx(bytes, boundary);
+        int idx = findIndex(bytes, boundary);
         if (idx == -1) {
             throw new IllegalStateException("Not a MultipartRequest");
         } else {
@@ -330,10 +352,10 @@ public class MultipartRequest extends HttpRequest{
     }
 
     private void createHeader(MultipartItem current, byte[] headers) {
-        ByteArrayOutputStream b= new ByteArrayOutputStream();
+        ByteArrayOutputStream b = new ByteArrayOutputStream();
         for (int i = 0; i < headers.length; i++) {
             if (headers[i] == CR) {
-                if (i < headers.length - 2 && headers[i+1] == LF) {
+                if (i < headers.length - 2 && headers[i + 1] == LF) {
                     String s = b.toString();
                     String[] split = s.split(":");
                     current.getHeaders().put(split[0].trim(), split[1].trim());
@@ -359,7 +381,6 @@ public class MultipartRequest extends HttpRequest{
         return length;
     }
 
-
     /**
      * 获取某串byte数组在原byte数组的位置
      *
@@ -367,7 +388,7 @@ public class MultipartRequest extends HttpRequest{
      * @param part   某串byte数组
      * @return -1 未找到  其他大于等于0的值
      */
-    int findIndx(byte[] source, byte[] part) {
+    int findIndex(byte[] source, byte[] part) {
         if (source == null || part == null || source.length == 0 || part.length == 0) {
             return -1;
         }
@@ -387,27 +408,6 @@ public class MultipartRequest extends HttpRequest{
         return -1;
     }
 
-    /**
-     * Compares <code>count</code> first bytes in the arrays
-     * <code>a</code> and <code>b</code>.
-     *
-     * @param a     The first array to compare.
-     * @param b     The second array to compare.
-     * @param count How many bytes should be compared.
-     *
-     * @return <code>true</code> if <code>count</code> first bytes in arrays
-     *         <code>a</code> and <code>b</code> are equal.
-     */
-    public static boolean arrayequals(byte[] a,
-                                      byte[] b,
-                                      int count) {
-        for (int i = 0; i < count; i++) {
-            if (a[i] != b[i]) {
-                return false;
-            }
-        }
-        return true;
-    }
     @Data
     public static class MultipartItem {
         public static final int FORM = 0;

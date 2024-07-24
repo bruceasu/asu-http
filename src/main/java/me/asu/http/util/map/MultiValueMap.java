@@ -4,6 +4,10 @@ import java.util.*;
 
 public interface MultiValueMap<K, V> {
 
+    static <K, V> MultiValueMap<K, V> create() {
+        return new LinkedMultiValueMap<K, V>();
+    }
+
     /**
      * 添加Key-Value。
      *
@@ -83,6 +87,7 @@ public interface MultiValueMap<K, V> {
     default V getValue(K key) {
         return getValue(key, 0);
     }
+
     /**
      * 拿到某一个Key的所有值。
      *
@@ -112,10 +117,6 @@ public interface MultiValueMap<K, V> {
      * @return True: contain, false: none.
      */
     boolean containsKey(K key);
-
-    static <K, V> MultiValueMap<K, V> create() {
-        return new LinkedMultiValueMap<K, V>();
-    }
 
     public static class LinkedMultiValueMap<K, V> implements MultiValueMap<K, V> {
 

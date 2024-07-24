@@ -7,7 +7,7 @@ public enum CommonContentType {
     JSON("application/json"),
     XML("application/xml"),
 
-            ;
+    ;
 
     private String type;
 

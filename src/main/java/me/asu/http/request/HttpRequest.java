@@ -1,17 +1,19 @@
 package me.asu.http.request;
 
 import com.sun.net.httpserver.HttpExchange;
+import lombok.extern.slf4j.Slf4j;
+import me.asu.http.common.HeaderKey;
+import me.asu.http.util.Bytes;
+import me.asu.http.util.JsonUtil;
+import me.asu.http.util.Streams;
+import me.asu.http.util.Strings;
+import me.asu.http.util.map.MultiValueMap;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URLDecoder;
-import java.util.HashMap;
-import java.util.Map;
-import lombok.extern.slf4j.Slf4j;
-import me.asu.http.common.HeaderKey;
-import me.asu.http.util.*;
-import me.asu.http.util.map.MultiValueMap;
 
 @Slf4j
 public class HttpRequest implements Request {
@@ -31,10 +33,10 @@ public class HttpRequest implements Request {
      */
     private ParamMap bodyMap = new ParamMap();
 
-    /**
-     * xml or json parse result
-     */
-    private Map<String, Object> dataMap = new HashMap<>();
+//    /**
+//     * xml or json parse result
+//     */
+//    private Map<String, Object> dataMap = new HashMap<>();
 
     /**
      * header
@@ -59,19 +61,27 @@ public class HttpRequest implements Request {
         initRequestBody();
         if (Request.isForm(contentType)) {
             initFormParam();
-        } else if (Request.isXml(contentType)) {
-            initXmlData();
+//        } else if (Request.isXml(contentType)) {
+            // 通常xml是要转成对象，转成Map的可能很少
+//            initXmlData();
+//        } else if (Request.isJson(contentType)){
+            // 通常json是要转成对象，转成Map的可能很少
+//            initJsonData();
         } else {
             // 当作是普通请求
         }
 
     }
 
-    private void initXmlData()
-    {
-        dataMap = ParseXMLUtils.string2Map(getRequestBody());
-    }
-
+//    private void initXmlData()
+//    {
+//        dataMap = ParseXMLUtils.string2Map(getRequestBody());
+//    }
+//
+//    private void initJsonData() throws IOException
+//    {
+//        dataMap = JsonUtil.toMap(getRequestBody());
+//    }
 
     @Override
     public HttpExchange getHttpExchange() {
@@ -84,9 +94,8 @@ public class HttpRequest implements Request {
     }
 
     @Override
-    public ParamMap getBodyMap()
-    {
-        return null;
+    public ParamMap getBodyMap() {
+        return bodyMap;
     }
 
     @Override
@@ -94,17 +103,17 @@ public class HttpRequest implements Request {
         return this.headMap;
     }
 
-    @Override
-    public Map<String, Object> getDataMap() {
-        return dataMap;
-    }
+//    @Override
+//    public Map<String, Object> getDataMap() {
+//        return dataMap;
+//    }
 
     @Override
     public String getParameter(String param) {
         String parameter = paramMap.getParameter(param);
         if (Strings.isEmpty(parameter)) {
             // try data map
-            parameter = getBodyMap().getParameter("param");
+            parameter = getBodyMap().getParameter(param);
         }
         return parameter;
     }
@@ -125,8 +134,7 @@ public class HttpRequest implements Request {
     }
 
     @Override
-    public <T> T getJson(Class<T> clazz) throws IOException
-    {
+    public <T> T getJson(Class<T> clazz) throws IOException {
         return JsonUtil.toJson(getRequestBody(), clazz);
     }
 

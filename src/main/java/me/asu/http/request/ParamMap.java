@@ -1,13 +1,14 @@
 package me.asu.http.request;
 
+import lombok.extern.slf4j.Slf4j;
+import me.asu.http.util.Strings;
+import me.asu.http.util.map.MultiValueMap;
+
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
-import lombok.extern.slf4j.Slf4j;
-import me.asu.http.util.Strings;
-import me.asu.http.util.map.MultiValueMap;
 
 /**
  * @author suk
@@ -29,7 +30,7 @@ public class ParamMap {
         Object o = map.getValue(key, 0);
         if (o instanceof String) {
             return (String) o;
-        } else if (o == null){
+        } else if (o == null) {
             return null;
         } else {
             return o.toString();

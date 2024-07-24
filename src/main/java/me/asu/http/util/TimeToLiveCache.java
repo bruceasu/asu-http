@@ -22,13 +22,14 @@
 
 package me.asu.http.util;
 
+import lombok.Getter;
+
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.concurrent.*;
-import lombok.Getter;
 
 /**
  * TimeToLiveCache.
@@ -46,12 +47,13 @@ public class TimeToLiveCache<K, T> implements Serializable {
             new SynchronousQueue<Runnable>(),
             new NamedThreadFactory("response-timeout-event-thread", true));
     @Getter
-    private long                              timeToLive;
+    private long timeToLive;
     private ConcurrentHashMap<K, CacheObject> cacheMap;
-    private CheckThread                       checkThread;
+    private CheckThread checkThread;
     private List<TimeoutHandler> handlers = new ArrayList<TimeoutHandler>();
     @Getter
     private boolean shutdown = false;
+
     public TimeToLiveCache(final long timeToLive, final long timerInterval) {
         this.timeToLive = timeToLive;
 

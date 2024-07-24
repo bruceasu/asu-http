@@ -1,39 +1,16 @@
 package me.asu.http.request;
 
 import com.sun.net.httpserver.HttpExchange;
-import java.io.IOException;
-import java.net.URI;
-import java.util.List;
-import java.util.Map;
 import me.asu.http.common.CommonContentType;
 import me.asu.http.common.HeaderKey;
 import me.asu.http.util.map.MultiValueMap;
 
+import java.io.IOException;
+import java.net.URI;
+import java.util.List;
+
 public interface Request {
 
-
-
-    String getParameter(String param);
-
-    ParamMap getParamMap();
-    ParamMap getBodyMap();
-
-    MultiValueMap<String, String> getHeadMap();
-
-    Map<String, Object> getDataMap();
-
-
-    String getMethod();
-
-    URI getRequestURI();
-
-    String getRequestBody();
-
-    <T> T getJson(Class<T> clazz) throws IOException;
-
-    void initBody();
-
-    HttpExchange getHttpExchange();
 
     public static boolean isForm(String contentType) {
         return (contentType != null && contentType.startsWith(CommonContentType.FORM.type()));
@@ -51,7 +28,9 @@ public interface Request {
         return (contentType != null && contentType.startsWith(CommonContentType.XML.type()));
     }
 
-    public static Request createReauest(HttpExchange httpExchange) {
+//    Map<String, Object> getDataMap();
+
+    public static Request createRequest(HttpExchange httpExchange) {
         List<String> strings = httpExchange.getRequestHeaders().get(HeaderKey.CONTENT_TYPE);
         if (strings == null || strings.isEmpty()) {
             return httpRequest(httpExchange);
@@ -75,6 +54,26 @@ public interface Request {
         httpRequest.initBody();
         return httpRequest;
     }
+
+    String getParameter(String param);
+
+    ParamMap getParamMap();
+
+    ParamMap getBodyMap();
+
+    MultiValueMap<String, String> getHeadMap();
+
+    String getMethod();
+
+    URI getRequestURI();
+
+    String getRequestBody();
+
+    <T> T getJson(Class<T> clazz) throws IOException;
+
+    void initBody();
+
+    HttpExchange getHttpExchange();
 
 
 }

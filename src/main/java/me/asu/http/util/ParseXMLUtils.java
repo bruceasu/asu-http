@@ -1,17 +1,18 @@
 package me.asu.http.util;
 
-import java.io.StringReader;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
+
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import java.io.StringReader;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class ParseXMLUtils {
 
@@ -19,8 +20,7 @@ public class ParseXMLUtils {
      * 将Document对象转为Map（String→Document→Map）
      */
     @SuppressWarnings("rawtypes")
-    public static Map<String, Object> string2Map(String str)
-    {
+    public static Map<String, Object> string2Map(String str) {
         return dom2Map(parseXmlString(str));
     }
 
@@ -28,8 +28,7 @@ public class ParseXMLUtils {
      * 将Document对象转为Map（String→Document→Map）
      */
     @SuppressWarnings("rawtypes")
-    public static Map<String, Object> dom2Map(Document doc)
-    {
+    public static Map<String, Object> dom2Map(Document doc) {
         Map<String, Object> map = new HashMap<String, Object>();
         if (doc == null) {
             return map;
@@ -45,8 +44,7 @@ public class ParseXMLUtils {
      * @return Map
      */
     @SuppressWarnings({"unchecked", "rawtypes"})
-    public static Object dom2Map(Node e)
-    {
+    public static Object dom2Map(Node e) {
         Map map = new HashMap();
         if (e.hasChildNodes()) {
             NodeList childNodes = e.getChildNodes();
@@ -82,14 +80,13 @@ public class ParseXMLUtils {
         return map;
     }
 
-    private static Document parseXmlString(String xmlStr)
-    {
+    private static Document parseXmlString(String xmlStr) {
 
         try {
-            InputSource            is      = new InputSource(new StringReader(xmlStr));
+            InputSource is = new InputSource(new StringReader(xmlStr));
             DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-            DocumentBuilder        builder = factory.newDocumentBuilder();
-            Document               doc     = builder.parse(is);
+            DocumentBuilder builder = factory.newDocumentBuilder();
+            Document doc = builder.parse(is);
             return doc;
         } catch (Exception e) {
             e.printStackTrace();
@@ -97,8 +94,7 @@ public class ParseXMLUtils {
         return null;
     }
 
-    public static void main(String[] args)
-    {
+    public static void main(String[] args) {
         String str1 = "<HEADER>" + "       <POOL_ID>2</POOL_ID>" + "       <DB_ID>EUR</DB_ID>"
                 + "       <CHANNEL_ID>11</CHANNEL_ID>" + "       <USERNAME>tom</USERNAME>"
                 + "       <PASSWORD>sss</PASSWORD>" + "   </HEADER>";

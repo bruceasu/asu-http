@@ -1,4 +1,3 @@
-
 package me.asu.http.util;
 
 import java.io.UnsupportedEncodingException;
@@ -20,22 +19,22 @@ import java.util.regex.Pattern;
  */
 public class Strings {
 
-    protected static final Pattern RE_UNICODE       = Pattern.compile("\\\\u([0-9a-zA-Z]{4})");
-    public static final    Pattern P_CITIZEN_ID     = Pattern
+    public static final Pattern P_CITIZEN_ID = Pattern
             .compile("[1-9]\\d{5}[1-2]\\d{3}((0\\d)|(1[0-2]))(([0|1|2]\\d)|3[0-1])\\d{3}(\\d|X|x)");
-    public static final    Pattern P_MOBILE         = Pattern
+    public static final Pattern P_MOBILE = Pattern
             .compile("^((13[0-9])|(15[0-9])|(14[0-9])|(17[0-9])|(18[0-9]))\\d{8}$");
-    public static final    Pattern P_ZIP_CODE       = Pattern.compile("\\d{6}");
-    public static final    Pattern P_MONEY          = Pattern.compile("^(\\d+(?:\\.\\d+)?)$");
-    public static final    Pattern P_NUMBER         = Pattern.compile("^[\\d]+$");
-    public static final    Pattern P_EMAIL          = Pattern.compile(
+    public static final Pattern P_ZIP_CODE = Pattern.compile("\\d{6}");
+    public static final Pattern P_MONEY = Pattern.compile("^(\\d+(?:\\.\\d+)?)$");
+    public static final Pattern P_NUMBER = Pattern.compile("^[\\d]+$");
+    public static final Pattern P_EMAIL = Pattern.compile(
             "^([a-zA-Z0-9]*[-_]?[\\w.]+)*@([a-zA-Z0-9]*[-_]?[a-zA-Z0-9]+)+[\\\\.][A-Za-z]{2,3}([\\\\.][A-Za-z]{2})?$");
-    public static final    Pattern P_QQ             = Pattern.compile("[1-9][0-9]{4,10}");
-    public static final    Pattern P_USCC           = Pattern.compile(
+    public static final Pattern P_QQ = Pattern.compile("[1-9][0-9]{4,10}");
+    public static final Pattern P_USCC = Pattern.compile(
             "^(11|12|13|19|51|52|53|59|91|92|93|Y1)[1-9]{1}[0-9]{5}[0-9A-HJ-NP-RT-UW-Y0-9]{9}[0-90-9A-HJ-NP-RT-UW-Y]{1}$");
-    public static final    Pattern P_UNION_PAY_CARD = Pattern.compile("^62[0-5]\\d{13,16}$");
-    private static final   Pattern LINE_PATTERN     = Pattern.compile("_(\\w)");
-    private static final   Pattern HUMP_PATTERN     = Pattern.compile("[A-Z]");
+    public static final Pattern P_UNION_PAY_CARD = Pattern.compile("^62[0-5]\\d{13,16}$");
+    protected static final Pattern RE_UNICODE = Pattern.compile("\\\\u([0-9a-zA-Z]{4})");
+    private static final Pattern LINE_PATTERN = Pattern.compile("_(\\w)");
+    private static final Pattern HUMP_PATTERN = Pattern.compile("[A-Z]");
 
     protected Strings() {
     }
@@ -152,7 +151,7 @@ public class Strings {
     /**
      * 复制字符串
      *
-     * @param cs 字符串
+     * @param cs  字符串
      * @param num 数量
      * @return 新字符串
      */
@@ -170,7 +169,7 @@ public class Strings {
     /**
      * 复制字符
      *
-     * @param c 字符
+     * @param c   字符
      * @param num 数量
      * @return 新字符串
      */
@@ -216,8 +215,8 @@ public class Strings {
             return s.toString();
         }
         return new StringBuilder(len).append(Character.toLowerCase(c))
-                                     .append(s.subSequence(1, len))
-                                     .toString();
+                .append(s.subSequence(1, len))
+                .toString();
     }
 
     /**
@@ -239,8 +238,8 @@ public class Strings {
             return s.toString();
         }
         return new StringBuilder(len).append(Character.toUpperCase(c))
-                                     .append(s.subSequence(1, len))
-                                     .toString();
+                .append(s.subSequence(1, len))
+                .toString();
     }
 
     /**
@@ -431,7 +430,7 @@ public class Strings {
     /**
      * 根据一个正则式，将字符串拆分成数组，空元素将被忽略
      *
-     * @param s 字符串
+     * @param s     字符串
      * @param regex 正则式
      * @return 字符串数组
      */
@@ -453,7 +452,7 @@ public class Strings {
     /**
      * 将一个整数转换成最小长度为某一固定数值的十进制形式字符串
      *
-     * @param d 整数
+     * @param d     整数
      * @param width 宽度
      * @return 新字符串
      */
@@ -464,7 +463,7 @@ public class Strings {
     /**
      * 将一个整数转换成最小长度为某一固定数值的十六进制形式字符串
      *
-     * @param d 整数
+     * @param d     整数
      * @param width 宽度
      * @return 新字符串
      */
@@ -475,7 +474,7 @@ public class Strings {
     /**
      * 将一个整数转换成最小长度为某一固定数值的二进制形式字符串
      *
-     * @param d 整数
+     * @param d     整数
      * @param width 宽度
      * @return 新字符串
      */
@@ -486,7 +485,7 @@ public class Strings {
     /**
      * 将一个整数转换成固定长度的十进制形式字符串
      *
-     * @param d 整数
+     * @param d     整数
      * @param width 宽度
      * @return 新字符串
      */
@@ -497,7 +496,7 @@ public class Strings {
     /**
      * 将一个整数转换成固定长度的十六进制形式字符串
      *
-     * @param d 整数
+     * @param d     整数
      * @param width 宽度
      * @return 新字符串
      */
@@ -508,7 +507,7 @@ public class Strings {
     /**
      * 将一个整数转换成固定长度的二进制形式字符串
      *
-     * @param d 整数
+     * @param d     整数
      * @param width 宽度
      * @return 新字符串
      */
@@ -519,9 +518,9 @@ public class Strings {
     /**
      * 保证字符串为一固定长度。超过长度，切除右侧字符，否则右侧填补字符。
      *
-     * @param s 字符串
+     * @param s     字符串
      * @param width 长度
-     * @param c 补字符
+     * @param c     补字符
      * @return 修饰后的字符串
      */
     public static String cutRight(String s, int width, char c) {
@@ -541,9 +540,9 @@ public class Strings {
     /**
      * 保证字符串为一固定长度。超过长度，切除左侧字符，否则左侧填补字符。
      *
-     * @param s 字符串
+     * @param s     字符串
      * @param width 长度
-     * @param c 补字符
+     * @param c     补字符
      * @return 修饰后的字符串
      */
     public static String cutLeft(String s, int width, char c) {
@@ -563,9 +562,9 @@ public class Strings {
     /**
      * 在字符串左侧填充一定数量的特殊字符
      *
-     * @param o 可被 toString 的对象
+     * @param o     可被 toString 的对象
      * @param width 字符数量
-     * @param c 字符
+     * @param c     字符
      * @return 新字符串
      */
     public static String alignRight(Object o, int width, char c) {
@@ -583,9 +582,9 @@ public class Strings {
     /**
      * 在字符串右侧填充一定数量的特殊字符
      *
-     * @param o 可被 toString 的对象
+     * @param o     可被 toString 的对象
      * @param width 字符数量
-     * @param c 字符
+     * @param c     字符
      * @return 新字符串
      */
     public static String alignLeft(Object o, int width, char c) {
@@ -655,8 +654,8 @@ public class Strings {
      * 测试此字符串是否被指定的左字符串和右字符串所包裹
      *
      * @param str 字符串
-     * @param l 左字符串
-     * @param r 右字符串
+     * @param l   左字符串
+     * @param r   右字符串
      * @return 字符串是被左字符串和右字符串包裹
      */
     public static boolean isQuoteBy(String str, String l, String r) {
@@ -669,7 +668,7 @@ public class Strings {
     /**
      * 计算一个字符串开头有几个缩进，
      *
-     * @param str 给定字符串
+     * @param str      给定字符串
      * @param tabWidth 一个 \t 相当于几个空格，默认 4
      * @return 返回缩进级别
      */
@@ -694,7 +693,7 @@ public class Strings {
      * 计算一个字符串开头有几个重复的字符
      *
      * @param str 给定字符串
-     * @param c 指定重复字符
+     * @param c   指定重复字符
      * @return 开头重复字符的个数
      */
     public static int countStrHeadChar(String str, char c) {
@@ -712,8 +711,8 @@ public class Strings {
     /**
      * 对字符串反向缩进
      *
-     * @param str 给定字符串
-     * @param indent 反向 indent 几次，如果小于等于 0 相当于 1
+     * @param str      给定字符串
+     * @param indent   反向 indent 几次，如果小于等于 0 相当于 1
      * @param tabWidth 一个 \t 相当于几个空格，默认 4
      * @return 反向缩进后的字符串
      */
@@ -864,7 +863,7 @@ public class Strings {
      * </ul>
      *
      * @param str 字符串
-     * @param c 第一个个要被截取的字符
+     * @param c   第一个个要被截取的字符
      * @return 新字符串
      */
     public static String removeFirst(String str, char c) {
@@ -875,7 +874,7 @@ public class Strings {
      * 判断一个字符串数组是否包括某一字符串
      *
      * @param ss 字符串数组
-     * @param s 字符串
+     * @param s  字符串
      * @return 是否包含
      */
     public static boolean isin(String[] ss, String s) {
@@ -917,7 +916,7 @@ public class Strings {
      * </pre>
      *
      * @param cs 字符串
-     * @param c 分隔符
+     * @param c  分隔符
      * @return 转换后字符串
      */
     public static String lowerWord(CharSequence cs, char c) {
@@ -946,7 +945,7 @@ public class Strings {
      * </pre>
      *
      * @param cs 字符串
-     * @param c 分隔符
+     * @param c  分隔符
      * @return 转换后字符串
      */
     public static String upperWord(CharSequence cs, char c) {
@@ -1060,7 +1059,7 @@ public class Strings {
     /**
      * 将一个字节数变成人类容易识别的显示字符串，比如 1.5M 等
      *
-     * @param size 字节数
+     * @param size         字节数
      * @param thousandUnit 千的单位，可能为 1024 或者 1000
      * @return 人类容易阅读的字符串
      */
@@ -1097,7 +1096,7 @@ public class Strings {
     /**
      * 改变字符编码集
      *
-     * @param cs 原字符串
+     * @param cs         原字符串
      * @param newCharset 指定的新编码集
      * @return 新字符集编码的字符串
      */
@@ -1169,7 +1168,7 @@ public class Strings {
      * 按长度截取字符串（尾部补足）
      *
      * @param length 长度
-     * @param s 字符串内容
+     * @param s      字符串内容
      * @param supply 补足内容
      * @return 截断后的字符串
      */
@@ -1270,7 +1269,7 @@ public class Strings {
      * 通过正则表达式验证
      *
      * @param pattern 正则模式
-     * @param value 值
+     * @param value   值
      * @return 判断结果
      */
     public static boolean isMactchRegex(Pattern pattern, String value) {
@@ -1386,14 +1385,14 @@ public class Strings {
      * </ul>
      *
      * @param str 字符串
-     * @param c 最后一个个要被截取的字符
+     * @param c   最后一个个要被截取的字符
      * @return 新字符串
      */
     public static String removeLast(String str, char c) {
         return (Strings.isEmpty(str) || !str.endsWith(c + "")) ? str
-                                                               : str.subSequence(0,
-                                                                                 str.length() - 1)
-                                                                    .toString();
+                : str.subSequence(0,
+                str.length() - 1)
+                .toString();
     }
 
     public static String safeToString(Object value, String s) {
@@ -1469,7 +1468,7 @@ public class Strings {
     /**
      * 将驼峰式命名的字符串转换为使用符号连接方式。如果转换前的驼峰式命名的字符串为空，则返回空字符串。<br>
      *
-     * @param str 转换前的驼峰式命名的字符串，也可以为符号连接形式
+     * @param str    转换前的驼峰式命名的字符串，也可以为符号连接形式
      * @param symbol 连接符
      * @return 转换后符号连接方式命名的字符串
      * @since 4.0.10
@@ -1521,12 +1520,13 @@ public class Strings {
     public static int countOccurrencesOf(String src, String p) {
         int c = 0;
         int i = 0;
-        while( (i = src.indexOf(p, i)) != -1) {
+        while ((i = src.indexOf(p, i)) != -1) {
             c++;
             i += p.length();
         }
         return c;
     }
+
     public static boolean substringMatch(CharSequence str, int index, CharSequence substring) {
         for (int j = 0; j < substring.length(); j++) {
             int i = index + j;

@@ -35,10 +35,10 @@ import java.io.UnsupportedEncodingException;
 
 public class Hex {
 
-    public static final  String DEFAULT_CHARSET_NAME = "UTF-8";
-    private static final char[] DIGITS_LOWER         = {'0', '1', '2', '3', '4', '5', '6', '7', '8',
+    public static final String DEFAULT_CHARSET_NAME = "UTF-8";
+    private static final char[] DIGITS_LOWER = {'0', '1', '2', '3', '4', '5', '6', '7', '8',
             '9', 'a', 'b', 'c', 'd', 'e', 'f'};
-    private static final char[] DIGITS_UPPER         = {'0', '1', '2', '3', '4', '5', '6', '7', '8',
+    private static final char[] DIGITS_UPPER = {'0', '1', '2', '3', '4', '5', '6', '7', '8',
             '9', 'A', 'B', 'C', 'D', 'E', 'F'};
     private final String charsetName;
 
@@ -48,14 +48,6 @@ public class Hex {
 
     public Hex(String csName) {
         this.charsetName = csName;
-    }
-
-    public byte[] decode(byte[] array) {
-        try {
-            return decodeHex(new String(array, getCharsetName()).toCharArray());
-        } catch (UnsupportedEncodingException e) {
-            throw new RuntimeException(e.getMessage(), e);
-        }
     }
 
     public static byte[] decodeHex(char[] data) {
@@ -79,10 +71,6 @@ public class Hex {
         return out;
     }
 
-    public String getCharsetName() {
-        return this.charsetName;
-    }
-
     protected static int toDigit(char ch, int index) {
         int digit = Character.digit(ch, 16);
         if (digit == -1) {
@@ -91,31 +79,6 @@ public class Hex {
                             new Object[]{Character.valueOf(ch), Integer.valueOf(index)}));
         }
         return digit;
-    }
-
-    public Object decode(Object object) {
-        try {
-            char[] charArray = (object instanceof String) ? ((String) object).toCharArray()
-                    : (char[]) object;
-            return decodeHex(charArray);
-        } catch (ClassCastException e) {
-            throw new RuntimeException(e.getMessage(), e);
-        }
-    }
-
-    public byte[] encode(byte[] array) {
-        return getBytesUnchecked(encodeHexString(array), getCharsetName());
-    }
-
-    public byte[] getBytesUnchecked(String string, String charsetName) {
-        if (string == null) {
-            return null;
-        }
-        try {
-            return string.getBytes(charsetName);
-        } catch (UnsupportedEncodingException e) {
-            throw new RuntimeException(e.getMessage(), e);
-        }
     }
 
     public static String encodeHexString(byte[] data, int start, int end) {
@@ -149,6 +112,43 @@ public class Hex {
             out[(j++)] = toDigits[(0xF & data[i])];
         }
         return out;
+    }
+
+    public byte[] decode(byte[] array) {
+        try {
+            return decodeHex(new String(array, getCharsetName()).toCharArray());
+        } catch (UnsupportedEncodingException e) {
+            throw new RuntimeException(e.getMessage(), e);
+        }
+    }
+
+    public String getCharsetName() {
+        return this.charsetName;
+    }
+
+    public Object decode(Object object) {
+        try {
+            char[] charArray = (object instanceof String) ? ((String) object).toCharArray()
+                    : (char[]) object;
+            return decodeHex(charArray);
+        } catch (ClassCastException e) {
+            throw new RuntimeException(e.getMessage(), e);
+        }
+    }
+
+    public byte[] encode(byte[] array) {
+        return getBytesUnchecked(encodeHexString(array), getCharsetName());
+    }
+
+    public byte[] getBytesUnchecked(String string, String charsetName) {
+        if (string == null) {
+            return null;
+        }
+        try {
+            return string.getBytes(charsetName);
+        } catch (UnsupportedEncodingException e) {
+            throw new RuntimeException(e.getMessage(), e);
+        }
     }
 
     public Object encode(Object object) {

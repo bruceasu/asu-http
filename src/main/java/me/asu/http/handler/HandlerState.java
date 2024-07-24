@@ -8,8 +8,7 @@ public enum HandlerState {
     ;
     int value = -1;
 
-    HandlerState(int val)
-    {
+    HandlerState(int val) {
         this.value = val;
     }
 
