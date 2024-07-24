@@ -73,6 +73,8 @@ public interface Request {
 
     String getRequestBody();
 
+    byte[] getRawBody();
+
     <T> T getJson(Class<T> clazz) throws IOException;
 
     void initBody();

@@ -137,6 +137,9 @@ public class HttpRequest implements Request {
         return Bytes.toString(requestBody);
     }
 
+    public byte[] getRawBody() {
+        return requestBody;
+    }
     @Override
     public <T> T getJson(Class<T> clazz) throws IOException {
         return JsonUtil.toJson(getRequestBody(), clazz);
