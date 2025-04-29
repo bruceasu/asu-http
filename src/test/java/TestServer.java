@@ -1,29 +1,23 @@
-import me.asu.http.handler.action.Action;
 import me.asu.http.Application;
-import me.asu.http.request.Request;
+import me.asu.http.FileContextHandler;
 
 import java.io.IOException;
 
-public class TestServer extends Application {
-
+public class TestServer extends Application  {
     public TestServer() throws IOException {
-        super();
+        super(8000);
+        addRoute("/static/{*}",
+                new FileContextHandler("D:\\03_projects\\suk\\asu-http\\src\\test\\static"));
+        addRoute("/test", (req, rsp) -> {
+            rsp.send(200, "This is a test");
+            return 0;
+        });
     }
 
     public static void main(String[] args) throws IOException {
-        System.setProperty("static.dir", "D:\\03_projects\\suk\\asu-http\\src\\test\\static");
-
         TestServer testServer = new TestServer();
-        testServer.createRoute("/", new IndexAction());
         testServer.run();
     }
 
-    static class IndexAction implements Action {
 
-        @Override
-        public Object execute(Request req) {
-            return "This is a test";
-        }
-
-    }
 }

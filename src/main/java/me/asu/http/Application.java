@@ -1,32 +1,21 @@
 package me.asu.http;
 
 
-import com.sun.net.httpserver.HttpContext;
-import com.sun.net.httpserver.HttpHandler;
-import com.sun.net.httpserver.HttpServer;
+import lombok.Data;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import me.asu.http.filter.ContextFilter;
-import me.asu.http.filter.CorsFilter;
-import me.asu.http.handler.Route;
-import me.asu.http.handler.RouteHttpHandler;
-import me.asu.http.handler.StaticHttpHandler;
-import me.asu.http.handler.action.Action;
-import me.asu.http.util.NamedThreadFactory;
-import me.asu.http.util.Strings;
 
-import java.io.Closeable;
+import javax.net.ServerSocketFactory;
+import javax.net.ssl.SSLServerSocketFactory;
 import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.util.Objects;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+
+import static me.asu.http.Strings.isEmpty;
 
 /**
  * @author suk
@@ -35,78 +24,54 @@ import java.util.concurrent.TimeUnit;
 @Getter
 @Slf4j
 public class Application {
+    private transient HTTPServer               httpServer;
+    private transient ThreadPoolExecutor       executor;
+    private           AppConfig                config      = new AppConfig();
 
-    private transient HttpServer httpServer;
-    private transient ThreadPoolExecutor executor;
-    private transient Map<String, HttpContext> contextMap = new HashMap<>();
-    private transient List<HttpHandler> handlers = new ArrayList<>();
-    private List<String> staticPaths = new ArrayList<>();
-    // support templates
-    // private Path templatePath = Paths.get("templates");
-    private boolean debug = false;
-    private AppConfig config = new AppConfig();
-    private RouteHttpHandler routeHttpHandler;
-    private StaticHttpHandler staticHttpHandler;
-    public Application( AppConfig config) throws IOException {
-        this.config = config;
-        createExecutor();
-        createHttpServer();
-        addStaticHandler();
-        addRouteHandler();
-    }
     public Application() throws IOException {
-        createExecutor();
-        createHttpServer();
-        addStaticHandler();
-        addRouteHandler();
+        createHttpServer(config.getPort());
+        addDefaultHandlers();
+    }
+    public Application(int port) throws IOException {
+        createHttpServer(port);
+        addDefaultHandlers();
     }
 
-    private void addRouteHandler() {
-        routeHttpHandler = new RouteHttpHandler(this, config);
-        String path = "/";
-        HttpContext context = registerHandlerWithContextPath(path, routeHttpHandler);
-        routeHttpHandler.setCtx(context);
+    public void addRoute(String path, ContextHandler handler, String... methods) {
+        ensureServerCreated();
+        Objects.requireNonNull(path);
+        Objects.requireNonNull(handler);
+        httpServer.addContext(path, handler, methods);
     }
 
-    private void addStaticHandler() {
-        StaticHttpHandler staticHttpHandler = new StaticHttpHandler(this, config);
-        String path = staticHttpHandler.getContextPath();
-        HttpContext context = registerHandlerWithContextPath(path, staticHttpHandler);
-        staticHttpHandler.setCtx(context);
+    public void addRoutes(Object route) {
+        Objects.requireNonNull(route);
+        httpServer.addContexts(route);
     }
 
-    private void createExecutor() {
+    void ensureServerCreated() {
+        Objects.requireNonNull(httpServer, "httpServer is null");
+    }
+
+    public void setServerSocketFactory(ServerSocketFactory serverSocketFactory) {
+        ensureServerCreated();
+        httpServer.setServerSocketFactory(serverSocketFactory);
+    }
+
+    void addDefaultHandlers() {
+        addRoute("/{*}", new DeathHandler());
+    }
+
+    void createExecutor() {
         executor = new ThreadPoolExecutor(config.getThreads(), config.getThreads(), 0L,
                 TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>(),
                 new NamedThreadFactory("Http-Worker-"));
     }
 
-    private void createHttpServer() throws IOException {
-        InetSocketAddress address = new InetSocketAddress(config.getHost(), config.getPort());
-        httpServer = HttpServer.create(address, 0);
-        httpServer.setExecutor(executor);
-    }
-
-    public Route createRoute(String uri) {
-        return routeHttpHandler.getRoute(uri);
-    }
-
-    public Route createRoute(String uri, Action action) {
-        return routeHttpHandler.getRoute(uri).defaultMethod(action);
-    }
-
-
-
-    public HttpContext registerHandlerWithContextPath(String path, HttpHandler httpHandler) {
-        HttpContext context = getHttpServer().createContext(path, httpHandler);
-        getContextMap().put(path, context);
-        getHandlers().add(httpHandler);
-
-        ContextFilter cf = new ContextFilter();
-        context.getFilters().add(cf);
-        CorsFilter filter = new CorsFilter(config);
-        context.getFilters().add(filter);
-        return context;
+    void createHttpServer(int port) {
+        httpServer = new HTTPServer(port);
+        if (System.getProperty("javax.net.ssl.keyStore") != null) // enable SSL if configured
+            httpServer.setServerSocketFactory(SSLServerSocketFactory.getDefault());
     }
 
     /**
@@ -117,7 +82,7 @@ public class Application {
     public int run(AppConfig config) throws IOException {
         if (config != null) {
             this.config = config;
-            if (Strings.isEmpty(config.getHost())) {
+            if (isEmpty(config.getHost())) {
                 config.setHost(AppConfig.DEFAULT_HOST);
             }
             if (config.getPort() < 0 && config.getPort() > 65535) {
@@ -128,6 +93,7 @@ public class Application {
                 config.setThreads(AppConfig.DEFAULT_THREADS);
             }
         }
+
         return run();
     }
 
@@ -137,12 +103,11 @@ public class Application {
      * @return 端口
      */
     public int run() throws IOException {
+        createExecutor();
+        httpServer.setExecutor(executor);
         httpServer.start();
-        InetSocketAddress address = httpServer.getAddress();
-        int port = address.getPort();
-
-        log.info("Server is start at: {} ", port);
-        return port;
+        log.info("Server is start at: {} ", config.getPort());
+        return config.getPort();
     }
 
     /**
@@ -154,23 +119,11 @@ public class Application {
             executor = null;
         }
         if (httpServer != null) {
-            httpServer.stop(1);
+            httpServer.stop();
             httpServer = null;
         }
-
-        for (HttpHandler httpHandler : handlers) {
-            if (httpHandler instanceof Closeable) {
-                try {
-                    ((Closeable) httpHandler).close();
-                } catch (IOException e) {
-                    // ignore.
-                }
-            }
-        }
-
         log.info("Server is shutdown.");
     }
-
 
     @Override
     protected void finalize() throws Throwable {
@@ -178,5 +131,20 @@ public class Application {
         shutdown();
     }
 
+    @Data
+    public static class AppConfig {
+        static final int                   DEFAULT_THREADS = Math.max(200, 32 * Runtime.getRuntime().availableProcessors());
+        static final int                   DEFAULT_PORT    = 8000;
+        static final String                DEFAULT_HOST    = "0.0.0.0";
 
+        HTTPServer.GzipConfig gzipConfig   = new HTTPServer.GzipConfig();
+        HTTPServer.CorsConfig corsConfig   = new HTTPServer.CorsConfig();
+        int                   port         = DEFAULT_PORT;
+        String                host         = DEFAULT_HOST;
+        int                   threads      = DEFAULT_THREADS;
+        Charset               bodyEncoding = StandardCharsets.UTF_8;
+        Charset               uriEncoding  = StandardCharsets.UTF_8;
+        boolean               enableGzip   = false;
+        boolean               enableCors   = false;
+    }
 }
