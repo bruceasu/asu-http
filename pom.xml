@@ -7,6 +7,16 @@
     <groupId>me.asu</groupId>
     <artifactId>asu-http</artifactId>
     <version>2.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+    <modules>
+        <module>asu-http-core</module>
+        <module>asu-http-file-handler</module>
+        <module>asu-http-method-handler</module>
+        <module>asu-http-server</module>
+        <module>asu-http-xml-support</module>
+        <module>asu-http-multipart-support</module>
+        <module>asu-http-json-support</module>
+    </modules>
     <properties>
         <!-- MAVEN 配置 -->
         <maven.compiler.source>1.8</maven.compiler.source>
@@ -18,39 +28,46 @@
         <slf4j.version>1.7.25</slf4j.version>
         <junit.version>4.13.1</junit.version>
     </properties>
+    <repositories>
+        <repository>
+            <id>jitpack.io</id>
+            <url>https://jitpack.io</url>
+        </repository>
+    </repositories>
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>com.github.bruceasu.asu-log</groupId>
+                <artifactId>asu-log-minlog</artifactId>
+                <version>v1.0.1</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.projectlombok</groupId>
+                <artifactId>lombok</artifactId>
+                <version>${lombok.version}</version>
+                <scope>provided</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>junit</groupId>
+                <artifactId>junit</artifactId>
+                <version>${junit.version}</version>
+                <scope>test</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
     <dependencies>
+        <dependency>
+            <groupId>com.github.bruceasu.asu-log</groupId>
+            <artifactId>asu-log-minlog</artifactId>
+            <version>v1.0.1</version>
+        </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <version>${lombok.version}</version>
             <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-api</artifactId>
-            <version>${slf4j.version}</version>
-        </dependency>
-        <!-- 
-            using jdk logger for test
-            init logger in main
-            String path = ExampleMain.class.getClassLoader()
-                                     .getResource("jul-log.properties")
-                                     .getFile();
-            System.setProperty("java.util.logging.config.file", path);
-            LogManager.getLogManager().readConfiguration();
-            or
-            InputStream inputStream = LoggerProperties.class.getClassLoader().getResourceAsStream("jul-log.properties");
-            if (inputStream != null) {
-                LogManager.getLogManager().readConfiguration(inputStream);
-                LogManager.getLogManager().addLogger(logger);  // add Logger for defined in YourMainClass
-            }
-            or java -Djava.util.logging.appCfg.file=abc.properties YourMainClass
-         -->
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-jdk14</artifactId>
-            <version>${slf4j.version}</version>
-            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>junit</groupId>
@@ -84,19 +101,11 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.5.1</version>
                 <configuration>
-                    <fork>true</fork>
                     <source>${maven.compiler.source}</source>
                     <target>${maven.compiler.target}</target>
                     <encoding>${project.build.sourceEncoding}</encoding>
                     <compilerArgs>
-                        <!--<arg>-XX:MaxPermSize=512M</arg>-->
                         <arg>-parameters</arg>
-                        <!--<arg>-Xlint:unchecked</arg>-->
-                        <!--<arg>-Xlint:deprecation</arg>-->
-                        <!--<arg>-bootclasspath</arg>-->
-                        <!--<arg>${env.JAVA_HOME}/jre/lib/rt.jar</arg>-->
-                        <!--<arg>-extdirs</arg>-->
-                        <!--<arg>${project.basedir}/src/main/webapp/WEB-INF/lib</arg>-->
                     </compilerArgs>
                 </configuration>
             </plugin>
