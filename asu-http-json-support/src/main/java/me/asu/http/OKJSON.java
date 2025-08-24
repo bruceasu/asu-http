@@ -81,24 +81,8 @@ public class OKJSON {
             okjsonGenerator = okjsonGeneratorCache.get();
         }
 
-        if ((options & OPTIONS_DIRECT_ACCESS_PROPERTY_ENABLE) != 0) {
-            okjsonGenerator.setDirectAccessPropertyEnable(true);
-        } else {
-            okjsonGenerator.setDirectAccessPropertyEnable(false);
-        }
-
-        if ((options & OPTIONS_PRETTY_FORMAT_ENABLE) != 0) {
-            okjsonGenerator.setPrettyFormatEnable(true);
-        } else {
-            okjsonGenerator.setPrettyFormatEnable(false);
-        }
-
-        if ((options & OPTIONS_NULLABLE) != 0) {
-            okjsonGenerator.setNullEnable(true);
-        } else {
-            okjsonGenerator.setNullEnable(false);
-        }
-
+        Options opt = Options.fromMask(options);
+        applyOptions(okjsonGenerator, opt);
         try {
             return okjsonGenerator.stringify(object);
         } catch (Exception e) {
@@ -121,70 +105,63 @@ public class OKJSON {
 
         return toJson(jsonString, clazz, options);
     }
+    private static OkJsonParser getOkJsonParserApplied(Options opt) {
+        OkJsonParser p = getOkJsonParser();
+        applyOptions(p, opt);
+        return p;
+    }
 
+    @SuppressWarnings({"rawtypes","unchecked"})
+    private static <T> T fillToSubclassMap(Class<T> clazz, Map<String,Object> src) throws Exception {
+        Map m = (Map) newInstance(clazz);
+        m.putAll(src);
+        return (T) m;
+    }
+    @SuppressWarnings({"rawtypes","unchecked"})
+    private static <T> T fillToSubclassList(Class<T> clazz, List<Object> src) throws Exception {
+        List l = (List) newInstance(clazz);
+        l.addAll(src);
+        return (T) l;
+    }
     public static <T> T toJson(String jsonString, Class<T> clazz, int options) {
+        Options opt = Options.fromMask(options);
         try {
-            if (clazz == Map.class) {
-                return (T) toMap(jsonString, options);
-
+            if (clazz == Map.class || Map.class.isAssignableFrom(clazz)) {
+                Map<String, Object> m = getOkJsonParserApplied(opt).toMap(jsonString);
+                return Map.class.equals(clazz) ? (T) m : fillToSubclassMap(clazz, m);
             }
-            if (clazz.isAssignableFrom(Map.class)) {
-                Map object;
-                try {
-                    object = (Map) clazz.newInstance();
-                } catch (Exception e) {
-                    Log.error(e.getMessage(), e);
-                    errorCode.set(OKJSON_ERROR_NEW_OBJECT);
-                    errorDesc.set(e.getMessage());
-                    return null;
-                }
-
-                object.putAll(toMap(jsonString, options));
-                return (T) object;
+            if (clazz == List.class || List.class.isAssignableFrom(clazz)) {
+                List<Object> src = getOkJsonParserApplied(opt).toList(jsonString);
+                return List.class.equals(clazz) ? (T) src : fillToSubclassList(clazz, src);
             }
-
-            if (clazz == List.class) {
-
-            }
-
-            if (List.class.isAssignableFrom(clazz)) {
-
-            }
-            final OkJsonParser okjsonParser = getOkJsonParser();
-            if (okjsonParser == null) return null;
-
-            if ((options & OPTIONS_DIRECT_ACCESS_PROPERTY_ENABLE) != 0) {
-                okjsonParser.setDirectAccessPropertyEnable(true);
-            } else {
-                okjsonParser.setDirectAccessPropertyEnable(false);
-            }
-
-            if ((options & OPTIONS_STRICT_POLICY) != 0) {
-                okjsonParser.setStrictPolicyEnable(true);
-            } else {
-                okjsonParser.setStrictPolicyEnable(false);
-            }
-
-
-            T object;
-            try {
-                object = clazz.newInstance();
-            } catch (Exception e) {
-                Log.error(e.getMessage(), e);
-                errorCode.set(OKJSON_ERROR_NEW_OBJECT);
-                errorDesc.set(e.getMessage());
-                return null;
-            }
-
-            object = okjsonParser.toJson(jsonString, object);
-
-            errorCode.set(okjsonParser.getErrorCode());
-            errorDesc.set(okjsonParser.getErrorDesc());
-
-            return object;
-        } finally {
+            OkJsonParser p = getOkJsonParserApplied(opt);
+            T obj = newInstance(clazz);
+            obj = p.toJson(jsonString, obj);
+            errorCode.set(p.getErrorCode());
+            errorDesc.set(p.getErrorDesc());
+            return obj;
+        }  catch (Exception e) {
+            Log.error(e.getMessage(), e);
+            errorCode.set(OKJSON_ERROR_EXCEPTION);
+            errorDesc.set(e.getMessage());
+            return null;
+        }finally {
             okjsonParserCache.set(null);
         }
+    }
+
+    public static <T> T toList(String jsonString, int options) {
+        final OkJsonParser okjsonParser = getOkJsonParser();
+        if (okjsonParser == null) return null;
+
+        // 绑定选项
+        okjsonParser.setDirectAccessPropertyEnable((options & OPTIONS_DIRECT_ACCESS_PROPERTY_ENABLE) != 0);
+        okjsonParser.setStrictPolicyEnable((options & OPTIONS_STRICT_POLICY) != 0);
+
+        List<Object> list = okjsonParser.toList(jsonString);
+        errorCode.set(okjsonParser.getErrorCode());
+        errorDesc.set(okjsonParser.getErrorDesc());
+        return (T) list;
     }
 
     public static Map<String, Object> toMap(String jsonString, int options) {
@@ -229,6 +206,42 @@ public class OKJSON {
 
         return okjsonParser;
     }
+    // ====== 封装统一应用 ======
+    static void applyOptions(OkJsonParser p, Options o) {
+        p.setDirectAccessPropertyEnable(o.direct);
+        p.setStrictPolicyEnable(o.strict);
+    }
+    static void applyOptions(OkJsonGenerator g, Options o) {
+        g.setDirectAccessPropertyEnable(o.direct);
+        g.setPrettyFormatEnable(o.pretty);
+        g.setNullEnable(o.nullable);
+    }
+    // 统一构造
+    static <T> T newInstance(Class<T> clazz) throws Exception {
+        Constructor<T> c = clazz.getDeclaredConstructor();
+        c.setAccessible(true);
+        return c.newInstance();
+    }
+}
+
+// ====== 集中管理选项 ======
+final class Options {
+    final boolean direct;
+    final boolean pretty;
+    final boolean strict;
+    final boolean nullable;
+
+    private Options(boolean direct, boolean pretty, boolean strict, boolean nullable) {
+        this.direct = direct; this.pretty = pretty; this.strict = strict; this.nullable = nullable;
+    }
+    static Options fromMask(int mask) {
+        return new Options(
+                (mask & OKJSON.OPTIONS_DIRECT_ACCESS_PROPERTY_ENABLE) != 0,
+                (mask & OKJSON.OPTIONS_PRETTY_FORMAT_ENABLE) != 0,
+                (mask & OKJSON.OPTIONS_STRICT_POLICY) != 0,
+                (mask & OKJSON.OPTIONS_NULLABLE) != 0
+        );
+    }
 }
 
 @Setter
@@ -255,9 +268,12 @@ class OkJsonParser {
         TOKEN_TYPE_NULL // null
     }
 
-    private static ThreadLocal<HashMap<String, HashMap<String, Field>>> stringMapFieldsCache;
-    private static ThreadLocal<HashMap<String, HashMap<String, Method>>> stringMapMethodsCache;
-    private static ThreadLocal<StringBuilder> fieldStringBuilderCache;
+    private static final ThreadLocal<LinkedHashMap<String, LinkedHashMap<String, Field>>> stringMapFieldsCache =
+            ThreadLocal.withInitial(LinkedHashMap::new);
+    private static final ThreadLocal<LinkedHashMap<String, LinkedHashMap<String, Method>>> stringMapMethodsCache =
+            ThreadLocal.withInitial(LinkedHashMap::new);
+    private static final ThreadLocal<StringBuilder> fieldStringBuilderCache =
+            ThreadLocal.withInitial(() -> new StringBuilder(1024));
 
     private int jsonOffset;
     private int jsonLength;
@@ -278,6 +294,19 @@ class OkJsonParser {
     public static final int OKJSON_ERROR_PORPERTY_TYPE_NOT_MATCH_IN_OBJECT = -26;
     public static final int OKJSON_ERROR_NAME_NOT_FOUND_IN_OBJECT = -28;
     public static final int OKJSON_ERROR_NEW_OBJECT = -31;
+
+    // 统一构造
+    static <T> T newInstance(Class<T> clazz) throws Exception {
+        Constructor<T> c = clazz.getDeclaredConstructor();
+        c.setAccessible(true);
+        return c.newInstance();
+    }
+
+    private int fail(int code, String msg) {
+        this.errorCode = code;
+        this.errorDesc = msg;
+        return code;
+    }
 
     private int tokenJsonString(char[] jsonCharArray) {
         StringBuilder fieldStringBuilder;
@@ -345,61 +374,22 @@ class OkJsonParser {
                     fieldStringBuilder.append('\t');
                     beginOffset = jsonOffset + 1;
                 } else if (ch == 'u') {
-                    if (jsonOffset > beginOffset + 1)
-                        fieldStringBuilder.append(jsonCharArray, beginOffset, jsonOffset - beginOffset - 1);
-                    jsonOffset++;
-                    if (jsonOffset >= jsonLength) {
-                        return OKJSON_ERROR_END_OF_BUFFER;
+                    if (jsonOffset + 4 >= jsonLength) return OKJSON_ERROR_END_OF_BUFFER;
+                    char h1 = jsonCharArray[++jsonOffset];
+                    char h2 = jsonCharArray[++jsonOffset];
+                    char h3 = jsonCharArray[++jsonOffset];
+                    char h4 = jsonCharArray[++jsonOffset];
+                    if (!(isHex(h1) && isHex(h2) && isHex(h3) && isHex(h4))) {
+                        errorDesc = "Invalid unicode escape";
+                        return OKJSON_ERROR_INVALID_BYTE;
                     }
-                    ch = jsonCharArray[jsonOffset];
-                    if (('0' <= ch && ch <= '9') || ('a' <= ch && ch <= 'z') || ('A' <= ch && ch <= 'Z')) {
-                        jsonOffset++;
-                        if (jsonOffset >= jsonLength) {
-                            return OKJSON_ERROR_END_OF_BUFFER;
-                        }
-                        ch = jsonCharArray[jsonOffset];
-                        if (('0' <= ch && ch <= '9') || ('a' <= ch && ch <= 'z') || ('A' <= ch && ch <= 'Z')) {
-                            jsonOffset++;
-                            if (jsonOffset >= jsonLength) {
-                                return OKJSON_ERROR_END_OF_BUFFER;
-                            }
-                            ch = jsonCharArray[jsonOffset];
-                            if (('0' <= ch && ch <= '9') || ('a' <= ch && ch <= 'z') || ('A' <= ch && ch <= 'Z')) {
-                                jsonOffset++;
-                                if (jsonOffset >= jsonLength) {
-                                    return OKJSON_ERROR_END_OF_BUFFER;
-                                }
-                                ch = jsonCharArray[jsonOffset];
-                                if (('0' <= ch && ch <= '9') || ('a' <= ch && ch <= 'z') || ('A' <= ch && ch <= 'Z')) {
-                                    String unicodeString =
-                                            "0x" + jsonCharArray[jsonOffset - 3] + jsonCharArray[jsonOffset - 2] +
-                                                    jsonCharArray[jsonOffset - 1] + jsonCharArray[jsonOffset];
-                                    int unicodeInt = Integer.decode(unicodeString).intValue();
-                                    if (fieldStringBuilder.length() == 0)
-                                        fieldStringBuilder.append(jsonCharArray, beginOffset,
-                                                jsonOffset - 4 - beginOffset - 1);
-                                    fieldStringBuilder.append((char) unicodeInt);
-                                    beginOffset = jsonOffset + 1;
-                                } else {
-                                    fieldStringBuilder.append(jsonCharArray, beginOffset, jsonOffset - beginOffset);
-                                    beginOffset = jsonOffset;
-                                    jsonOffset--;
-                                }
-                            } else {
-                                fieldStringBuilder.append(jsonCharArray, beginOffset, jsonOffset - beginOffset);
-                                beginOffset = jsonOffset;
-                                jsonOffset--;
-                            }
-                        } else {
-                            fieldStringBuilder.append(jsonCharArray, beginOffset, jsonOffset - beginOffset);
-                            beginOffset = jsonOffset;
-                            jsonOffset--;
-                        }
-                    } else {
-                        fieldStringBuilder.append(jsonCharArray, beginOffset, jsonOffset - beginOffset);
-                        beginOffset = jsonOffset;
-                        jsonOffset--;
+                    int codePoint = Integer.parseInt(
+                            new String(new char[]{h1, h2, h3, h4}), 16);
+                    if (fieldStringBuilder.length() == 0) {
+                        fieldStringBuilder.append(jsonCharArray, beginOffset, (jsonOffset - 4) - beginOffset - 1);
                     }
+                    fieldStringBuilder.append((char) codePoint);
+                    beginOffset = jsonOffset + 1;
                 } else {
                     fieldStringBuilder.append(jsonCharArray, beginOffset, jsonOffset - beginOffset - 1);
                     fieldStringBuilder.append(ch);
@@ -410,6 +400,9 @@ class OkJsonParser {
         }
 
         return OKJSON_ERROR_END_OF_BUFFER;
+    }
+    private boolean isHex(char c) {
+        return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
     }
 
     private int tokenJsonNumber(char[] jsonCharArray) {
@@ -433,9 +426,7 @@ class OkJsonParser {
                 jsonOffset++;
             } else if (ch == 'e' || ch == 'E') {
                 jsonOffset++;
-                if (jsonOffset >= jsonLength) {
-                    return OKJSON_ERROR_END_OF_BUFFER;
-                }
+                if (jsonOffset >= jsonLength) return fail(OKJSON_ERROR_END_OF_BUFFER,"");
                 ch = jsonCharArray[jsonOffset];
                 if (ch == '-' || ch == '+') {
                     jsonOffset++;
@@ -452,7 +443,7 @@ class OkJsonParser {
             }
         }
 
-        return OKJSON_ERROR_END_OF_BUFFER;
+        return fail(OKJSON_ERROR_END_OF_BUFFER, "");
     }
 
     private int tokenJsonWord(char[] jsonCharArray) {
@@ -594,155 +585,89 @@ class OkJsonParser {
                     }
                 }
             } else {
-                errorDesc = "Invalid byte '" + ch + "'";
-                return OKJSON_ERROR_INVALID_BYTE;
+                return fail(OKJSON_ERROR_INVALID_BYTE,"Invalid byte '" + ch + "'");
             }
         }
 
-        return OKJSON_ERROR_END_OF_BUFFER;
+        return fail(OKJSON_ERROR_END_OF_BUFFER, "");
     }
 
-    private int addArrayObject(char[] jsonCharArray, TokenType valueTokenType, int valueBeginOffset,
-                               int valueEndOffset, Object object, Field field) {
+    Object convertTokenTo(
+            char[] json, TokenType t, int begin, int end, boolean boolValue,
+            @SuppressWarnings("rawtypes") Class target,  Field field) throws Exception {
+
+        if (t == TokenType.TOKEN_TYPE_NULL) return null;
+
+        String s = new String(json, begin, end - begin + 1);
+        if (target == String.class) {
+            StringBuilder sb = fieldStringBuilderCache.get();
+            return (sb.length() > 0) ? sb.toString() : s;
+        }
+        if (target == Boolean.class || target == boolean.class) {
+            return (t == TokenType.TOKEN_TYPE_BOOL) ? Boolean.valueOf(boolValue) : null;
+        }
+        if (Number.class.isAssignableFrom(target) || target.isPrimitive()) {
+            if (t == TokenType.TOKEN_TYPE_INTEGER || t == TokenType.TOKEN_TYPE_DECIMAL) {
+                if (target == Byte.class || target == byte.class)    return Byte.valueOf(s);
+                if (target == Short.class || target == short.class)  return Short.valueOf(s);
+                if (target == Integer.class || target == int.class)  return Integer.valueOf(s);
+                if (target == Long.class || target == long.class)    return Long.valueOf(s);
+                if (target == Float.class || target == float.class)  return Float.valueOf(s);
+                if (target == Double.class || target == double.class)return Double.valueOf(s);
+                // 兜底：尽量不丢失精度
+                if (t == TokenType.TOKEN_TYPE_INTEGER) return new BigInteger(s);
+                return new BigDecimal(s);
+            }
+            return null;
+        }
+        if (target == LocalDate.class) {
+            String pattern = resolvePattern(field, "yyyy-MM-dd");
+            return LocalDate.parse(s, DateTimeFormatter.ofPattern(pattern));
+        }
+        if (target == LocalTime.class) {
+            String pattern = resolvePattern(field, "HH:mm:ss");
+            return LocalTime.parse(s, DateTimeFormatter.ofPattern(pattern));
+        }
+        if (target == LocalDateTime.class) {
+            String pattern = resolvePattern(field, "yyyy-MM-dd HH:mm:ss");
+            return LocalDateTime.parse(s, DateTimeFormatter.ofPattern(pattern));
+        }
+        return null; // 其余类型这里不处理
+    }
+
+    String resolvePattern(Field field, String def) {
+        if (field != null && field.isAnnotationPresent(OkJsonDateTimeFormatter.class)) {
+            return field.getAnnotation(OkJsonDateTimeFormatter.class).format();
+        }
+        return def;
+    }
+
+    int addArrayObject(char[] json, TokenType vt, int vb, int ve,
+                               Object object, Field field) {
 
         try {
-            Class<?> clazz = field.getType();
-            if (clazz == ArrayList.class || clazz == LinkedList.class) {
-                Type type = field.getGenericType();
-                ParameterizedType pt = (ParameterizedType) type;
-                Class<?> typeClass = (Class<?>) pt.getActualTypeArguments()[0];
-                if (typeClass == String.class) {
-                    if (valueTokenType == TokenType.TOKEN_TYPE_STRING) {
-                        String value = new String(jsonCharArray, valueBeginOffset,
-                                valueEndOffset - valueBeginOffset + 1);
-                        ((List<Object>) object).add(value);
-                    } else if (valueTokenType == TokenType.TOKEN_TYPE_NULL) {
-                        ;
-                    }
-                } else if (typeClass == Byte.class) {
-                    if (valueTokenType == TokenType.TOKEN_TYPE_INTEGER) {
-                        Byte value = Byte.valueOf(new String(jsonCharArray, valueBeginOffset,
-                                valueEndOffset - valueBeginOffset + 1));
-                        ((List<Object>) object).add(value);
-                    } else if (valueTokenType == TokenType.TOKEN_TYPE_NULL) {
-                        ;
-                    }
-                } else if (typeClass == Short.class) {
-                    if (valueTokenType == TokenType.TOKEN_TYPE_INTEGER) {
-                        Short value = Short.valueOf(new String(jsonCharArray, valueBeginOffset,
-                                valueEndOffset - valueBeginOffset + 1));
-                        ((List<Object>) object).add(value);
-                    } else if (valueTokenType == TokenType.TOKEN_TYPE_NULL) {
-                        ;
-                    }
-                } else if (typeClass == Integer.class) {
-                    if (valueTokenType == TokenType.TOKEN_TYPE_INTEGER) {
-                        Integer value = Integer.valueOf(new String(jsonCharArray, valueBeginOffset,
-                                valueEndOffset - valueBeginOffset + 1));
-                        ((List<Object>) object).add(value);
-                    } else if (valueTokenType == TokenType.TOKEN_TYPE_NULL) {
-                        ;
-                    }
-                } else if (typeClass == Long.class) {
-                    if (valueTokenType == TokenType.TOKEN_TYPE_INTEGER) {
-                        Long value = Long.valueOf(new String(jsonCharArray, valueBeginOffset,
-                                valueEndOffset - valueBeginOffset + 1));
-                        ((List<Object>) object).add(value);
-                    } else if (valueTokenType == TokenType.TOKEN_TYPE_NULL) {
-                        ;
-                    }
-                } else if (typeClass == Float.class) {
-                    if (valueTokenType == TokenType.TOKEN_TYPE_DECIMAL) {
-                        Float value = Float.valueOf(new String(jsonCharArray, valueBeginOffset,
-                                valueEndOffset - valueBeginOffset + 1));
-                        ((List<Object>) object).add(value);
-                    } else if (valueTokenType == TokenType.TOKEN_TYPE_NULL) {
-                        ;
-                    }
-                } else if (typeClass == Double.class) {
-                    if (valueTokenType == TokenType.TOKEN_TYPE_DECIMAL) {
-                        Double value = Double.valueOf(new String(jsonCharArray, valueBeginOffset,
-                                valueEndOffset - valueBeginOffset + 1));
-                        ((List<Object>) object).add(value);
-                    } else if (valueTokenType == TokenType.TOKEN_TYPE_NULL) {
-                        ;
-                    }
-                } else if (typeClass == Boolean.class) {
-                    if (valueTokenType == TokenType.TOKEN_TYPE_BOOL) {
-                        ((List<Object>) object).add(booleanValue);
-                    } else if (valueTokenType == TokenType.TOKEN_TYPE_NULL) {
-                        ;
-                    }
-                } else if (typeClass == LocalDate.class) {
-                    if (valueTokenType == TokenType.TOKEN_TYPE_STRING) {
-                        OkJsonDateTimeFormatter okjsonDateTimeFormatter;
-                        String defaultDateTimeFormatter;
-                        LocalDate localDate;
-                        if (field.isAnnotationPresent(OkJsonDateTimeFormatter.class)) {
-                            okjsonDateTimeFormatter = field.getAnnotation(OkJsonDateTimeFormatter.class);
-                            defaultDateTimeFormatter = okjsonDateTimeFormatter.format();
-                        } else {
-                            defaultDateTimeFormatter = "yyyy-MM-dd";
-                        }
-                        localDate = LocalDate.parse(new String(jsonCharArray, valueBeginOffset,
-                                valueEndOffset - valueBeginOffset +
-                                        1), DateTimeFormatter.ofPattern(defaultDateTimeFormatter));
-                        ((List<Object>) object).add(localDate);
-                    } else if (valueTokenType == TokenType.TOKEN_TYPE_NULL) {
-                        ;
-                    }
-                } else if (typeClass == LocalTime.class) {
-                    if (valueTokenType == TokenType.TOKEN_TYPE_STRING) {
-                        OkJsonDateTimeFormatter okjsonDateTimeFormatter;
-                        String defaultDateTimeFormatter;
-                        LocalTime localTime;
-                        if (field.isAnnotationPresent(OkJsonDateTimeFormatter.class)) {
-                            okjsonDateTimeFormatter = field.getAnnotation(OkJsonDateTimeFormatter.class);
-                            defaultDateTimeFormatter = okjsonDateTimeFormatter.format();
-                        } else {
-                            defaultDateTimeFormatter = "HH:mm:ss";
-                        }
-                        localTime = LocalTime.parse(new String(jsonCharArray, valueBeginOffset,
-                                valueEndOffset - valueBeginOffset +
-                                        1), DateTimeFormatter.ofPattern(defaultDateTimeFormatter));
-                        ((List<Object>) object).add(localTime);
-                    } else if (valueTokenType == TokenType.TOKEN_TYPE_NULL) {
-                        ;
-                    }
-                } else if (typeClass == LocalDateTime.class) {
-                    if (valueTokenType == TokenType.TOKEN_TYPE_STRING) {
-                        OkJsonDateTimeFormatter okjsonDateTimeFormatter;
-                        String defaultDateTimeFormatter;
-                        LocalDateTime localDateTime;
-                        if (field.isAnnotationPresent(OkJsonDateTimeFormatter.class)) {
-                            okjsonDateTimeFormatter = field.getAnnotation(OkJsonDateTimeFormatter.class);
-                            defaultDateTimeFormatter = okjsonDateTimeFormatter.format();
-                        } else {
-                            defaultDateTimeFormatter = "yyyy-MM-dd HH:mm:ss";
-                        }
-                        localDateTime = LocalDateTime.parse(new String(jsonCharArray, valueBeginOffset,
-                                valueEndOffset - valueBeginOffset +
-                                        1), DateTimeFormatter.ofPattern(defaultDateTimeFormatter));
-                        ((List<Object>) object).add(localDateTime);
-                    } else if (valueTokenType == TokenType.TOKEN_TYPE_NULL) {
-                        ;
-                    }
-                } else if (valueTokenType == TokenType.TOKEN_TYPE_NULL) {
-                    ;
-                } else {
-                    if (strictPolicyEnable == true)
-                        return OKJSON_ERROR_PORPERTY_TYPE_NOT_MATCH_IN_OBJECT;
-                }
-            } else {
-                if (strictPolicyEnable == true)
-                    return OKJSON_ERROR_PORPERTY_TYPE_NOT_MATCH_IN_OBJECT;
+            Class<?> listType  = field.getType();
+            if (!List.class.isAssignableFrom(listType)) {
+                return strictPolicyEnable ? fail(OKJSON_ERROR_PORPERTY_TYPE_NOT_MATCH_IN_OBJECT,"") : 0;
             }
+
+            // 取 List<T> 的 T
+            Type g = field.getGenericType();
+            if (!(g instanceof ParameterizedType)) return 0;
+            Class<?> elemType = (Class<?>) ((ParameterizedType) g).getActualTypeArguments()[0];
+
+            Object converted = convertTokenTo(json, vt, vb, ve, booleanValue, elemType, field);
+            if (converted == null && vt != TokenType.TOKEN_TYPE_NULL) {
+                return strictPolicyEnable ? fail(OKJSON_ERROR_PORPERTY_TYPE_NOT_MATCH_IN_OBJECT,"") : 0;
+            }
+            ((List<Object>) object).add(converted);
+            return 0;
+
         } catch (Exception e) {
             Log.error(e.getMessage(), e);
-            return OKJSON_ERROR_EXCEPTION;
+            return fail(OKJSON_ERROR_EXCEPTION, e.getMessage());
         }
 
-        return 0;
     }
 
     int stringToArrayObject(char[] jsonCharArray, Object object, Field field) {
@@ -771,7 +696,7 @@ class OkJsonParser {
                             Type type = field.getGenericType();
                             ParameterizedType pt = (ParameterizedType) type;
                             Class<?> typeClazz = (Class<?>) pt.getActualTypeArguments()[0];
-                            Object childObject = typeClazz.newInstance();
+                            Object childObject = newInstance(typeClazz);
                             nret = stringToObjectProperties(jsonCharArray, childObject);
                             if (nret != 0)
                                 return nret;
@@ -785,18 +710,16 @@ class OkJsonParser {
                     }
                 } catch (Exception e) {
                     Log.error(e.getMessage(), e);
-                    return OKJSON_ERROR_EXCEPTION;
+                    return fail(OKJSON_ERROR_EXCEPTION, e.getMessage());
                 }
-            } else if (isTokenValueType()) {
+            } else if (isTokenValueType(tokenType)) {
                 ;
             } else {
                 int beginPos = endOffset - 16;
                 if (beginPos < 0)
                     beginPos = 0;
-                errorDesc =
-                        "unexpect \"" + String.copyValueOf(jsonCharArray, beginOffset, endOffset - beginOffset + 1) +
-                                "\"";
-                return OKJSON_ERROR_UNEXPECT_TOKEN_AFTER_LEFT_BRACE;
+                return fail(OKJSON_ERROR_UNEXPECT_TOKEN_AFTER_LEFT_BRACE,
+                        "unexpect \"" + String.copyValueOf(jsonCharArray, beginOffset, endOffset - beginOffset + 1) + "\"");
             }
 
             valueTokenType = tokenType;
@@ -823,10 +746,8 @@ class OkJsonParser {
                 if (tokenType == TokenType.TOKEN_TYPE_RIGHT_BRACKET)
                     break;
             } else {
-                errorDesc =
-                        "unexpect \"" + String.copyValueOf(jsonCharArray, beginOffset, endOffset - beginOffset + 1) +
-                                "\"";
-                return OKJSON_ERROR_UNEXPECT_TOKEN_AFTER_LEFT_BRACE;
+                return fail(OKJSON_ERROR_UNEXPECT_TOKEN_AFTER_LEFT_BRACE,
+                        "unexpect \"" + String.copyValueOf(jsonCharArray, beginOffset, endOffset - beginOffset + 1) + "\"");
             }
         }
 
@@ -847,7 +768,7 @@ class OkJsonParser {
                             fieldStringBuilder);
                 } catch (Exception e) {
                     Log.error(e.getMessage(), e);
-                    return OKJSON_ERROR_EXCEPTION;
+                    return fail(OKJSON_ERROR_EXCEPTION, e.getMessage());
                 }
             }
         } else if (field.getType() == Byte.class) {
@@ -856,7 +777,7 @@ class OkJsonParser {
                     setByte(jsonCharArray, valueBeginOffset, valueEndOffset, object, field, method);
                 } catch (Exception e) {
                     Log.error(e.getMessage(), e);
-                    return OKJSON_ERROR_EXCEPTION;
+                    return fail(OKJSON_ERROR_EXCEPTION, e.getMessage());
                 }
             }
         } else if (field.getType() == Short.class) {
@@ -865,7 +786,7 @@ class OkJsonParser {
                     setShort(jsonCharArray, valueBeginOffset, valueEndOffset, object, field, method);
                 } catch (Exception e) {
                     Log.error(e.getMessage(), e);
-                    return OKJSON_ERROR_EXCEPTION;
+                    return fail(OKJSON_ERROR_EXCEPTION, e.getMessage());
                 }
             }
         } else if (field.getType() == Integer.class) {
@@ -874,7 +795,7 @@ class OkJsonParser {
                     setInteger(jsonCharArray, valueBeginOffset, valueEndOffset, object, field, method);
                 } catch (Exception e) {
                     Log.error(e.getMessage(), e);
-                    return OKJSON_ERROR_EXCEPTION;
+                    return fail(OKJSON_ERROR_EXCEPTION, e.getMessage());
                 }
             }
         } else if (field.getType() == Long.class) {
@@ -883,7 +804,7 @@ class OkJsonParser {
                     setLong(jsonCharArray, valueBeginOffset, valueEndOffset, object, field, method);
                 } catch (Exception e) {
                     Log.error(e.getMessage(), e);
-                    return OKJSON_ERROR_EXCEPTION;
+                    return fail(OKJSON_ERROR_EXCEPTION, e.getMessage());
                 }
             }
         } else if (field.getType() == Float.class) {
@@ -892,7 +813,7 @@ class OkJsonParser {
                     setFloat(jsonCharArray, valueBeginOffset, valueEndOffset, object, field, method);
                 } catch (Exception e) {
                     Log.error(e.getMessage(), e);
-                    return OKJSON_ERROR_EXCEPTION;
+                    return fail(OKJSON_ERROR_EXCEPTION, e.getMessage());
                 }
             }
         } else if (field.getType() == Double.class) {
@@ -901,7 +822,7 @@ class OkJsonParser {
                     setDouble(jsonCharArray, valueBeginOffset, valueEndOffset, object, field, method);
                 } catch (Exception e) {
                     Log.error(e.getMessage(), e);
-                    return OKJSON_ERROR_EXCEPTION;
+                    return fail(OKJSON_ERROR_EXCEPTION, e.getMessage());
                 }
             }
         } else if (field.getType() == Boolean.class) {
@@ -910,7 +831,7 @@ class OkJsonParser {
                     setBoolean(jsonCharArray, valueBeginOffset, valueEndOffset, object, field, method);
                 } catch (Exception e) {
                     Log.error(e.getMessage(), e);
-                    return OKJSON_ERROR_EXCEPTION;
+                    return fail(OKJSON_ERROR_EXCEPTION, e.getMessage());
                 }
             }
         } else if (field.getType().getName().equals("byte") && valueTokenType == TokenType.TOKEN_TYPE_INTEGER) {
@@ -918,49 +839,49 @@ class OkJsonParser {
                 setByte2(jsonCharArray, valueBeginOffset, valueEndOffset, object, field, method);
             } catch (Exception e) {
                 Log.error(e.getMessage(), e);
-                return OKJSON_ERROR_EXCEPTION;
+                return fail(OKJSON_ERROR_EXCEPTION, e.getMessage());
             }
         } else if (field.getType().getName().equals("short") && valueTokenType == TokenType.TOKEN_TYPE_INTEGER) {
             try {
                 setShort2(jsonCharArray, valueBeginOffset, valueEndOffset, object, field, method);
             } catch (Exception e) {
                 Log.error(e.getMessage(), e);
-                return OKJSON_ERROR_EXCEPTION;
+                return fail(OKJSON_ERROR_EXCEPTION, e.getMessage());
             }
         } else if (field.getType().getName().equals("int") && valueTokenType == TokenType.TOKEN_TYPE_INTEGER) {
             try {
                 setInteger2(jsonCharArray, valueBeginOffset, valueEndOffset, object, field, method);
             } catch (Exception e) {
                 Log.error(e.getMessage(), e);
-                return OKJSON_ERROR_EXCEPTION;
+                return fail(OKJSON_ERROR_EXCEPTION, e.getMessage());
             }
         } else if (field.getType().getName().equals("long") && valueTokenType == TokenType.TOKEN_TYPE_INTEGER) {
             try {
                 setLong2(jsonCharArray, valueBeginOffset, valueEndOffset, object, field, method);
             } catch (Exception e) {
                 Log.error(e.getMessage(), e);
-                return OKJSON_ERROR_EXCEPTION;
+                return fail(OKJSON_ERROR_EXCEPTION, e.getMessage());
             }
         } else if (field.getType().getName().equals("float") && valueTokenType == TokenType.TOKEN_TYPE_DECIMAL) {
             try {
                 setFloat2(jsonCharArray, valueBeginOffset, valueEndOffset, object, field, method);
             } catch (Exception e) {
                 Log.error(e.getMessage(), e);
-                return OKJSON_ERROR_EXCEPTION;
+                return fail(OKJSON_ERROR_EXCEPTION, e.getMessage());
             }
         } else if (field.getType().getName().equals("double") && valueTokenType == TokenType.TOKEN_TYPE_DECIMAL) {
             try {
                 setDouble2(jsonCharArray, valueBeginOffset, valueEndOffset, object, field, method);
             } catch (Exception e) {
                 Log.error(e.getMessage(), e);
-                return OKJSON_ERROR_EXCEPTION;
+                return fail(OKJSON_ERROR_EXCEPTION, e.getMessage());
             }
         } else if (field.getType().getName().equals("boolean") && valueTokenType == TokenType.TOKEN_TYPE_BOOL) {
             try {
                 setBoolean2(object, field, method);
             } catch (Exception e) {
                 Log.error(e.getMessage(), e);
-                return OKJSON_ERROR_EXCEPTION;
+                return fail(OKJSON_ERROR_EXCEPTION, e.getMessage());
             }
         } else if (field.getType() == LocalDate.class) {
             if (valueTokenType == TokenType.TOKEN_TYPE_STRING) {
@@ -969,7 +890,7 @@ class OkJsonParser {
                             fieldStringBuilder);
                 } catch (Exception e) {
                     Log.error(e.getMessage(), e);
-                    return OKJSON_ERROR_EXCEPTION;
+                    return fail(OKJSON_ERROR_EXCEPTION, e.getMessage());
                 }
             }
         } else if (field.getType() == LocalTime.class) {
@@ -979,7 +900,7 @@ class OkJsonParser {
                             fieldStringBuilder);
                 } catch (Exception e) {
                     Log.error(e.getMessage(), e);
-                    return OKJSON_ERROR_EXCEPTION;
+                    return fail(OKJSON_ERROR_EXCEPTION, e.getMessage());
                 }
             }
         } else if (field.getType() == LocalDateTime.class) {
@@ -989,7 +910,7 @@ class OkJsonParser {
                             fieldStringBuilder);
                 } catch (Exception e) {
                     Log.error(e.getMessage(), e);
-                    return OKJSON_ERROR_EXCEPTION;
+                    return fail(OKJSON_ERROR_EXCEPTION, e.getMessage());
                 }
             }
         } else if (Enum.class.isAssignableFrom(field.getType()) && valueTokenType == TokenType.TOKEN_TYPE_STRING) {
@@ -997,18 +918,17 @@ class OkJsonParser {
                 setEnum(object, field, method, fieldStringBuilder);
             } catch (Exception e) {
                 Log.error(e.getMessage(), e);
-                return OKJSON_ERROR_EXCEPTION;
+                return fail(OKJSON_ERROR_EXCEPTION, e.getMessage());
             }
         } else if (valueTokenType == TokenType.TOKEN_TYPE_NULL) {
             try {
                 setNull(object, field, method);
             } catch (Exception e) {
                 Log.error(e.getMessage(), e);
-                return OKJSON_ERROR_EXCEPTION;
+                return fail(OKJSON_ERROR_EXCEPTION, e.getMessage());
             }
         } else {
-            if (strictPolicyEnable == true)
-                return OKJSON_ERROR_PORPERTY_TYPE_NOT_MATCH_IN_OBJECT;
+            if (strictPolicyEnable) return fail(OKJSON_ERROR_PORPERTY_TYPE_NOT_MATCH_IN_OBJECT,"");
         }
 
         return 0;
@@ -1017,24 +937,26 @@ class OkJsonParser {
     private void setNull(Object object, Field field, Method method) throws IllegalAccessException,
             InvocationTargetException {
         if (method != null) {
-            method.invoke(object, null);
-        } else if (directAccessPropertyEnable == true) {
+            method.invoke(object, (Object) null);
+        } else if (directAccessPropertyEnable) {
             field.set(object, null);
         }
     }
 
-    private void setEnum(Object object, Field field, Method method, StringBuilder fieldStringBuilder) throws IllegalAccessException, InvocationTargetException {
+    @SuppressWarnings("unchecked")
+    private void setEnum(Object object, Field field, Method method, StringBuilder fieldStringBuilder)
+            throws IllegalAccessException, InvocationTargetException {
         Object o = Enum.valueOf(((Class<Enum>) field.getType()), fieldStringBuilder.toString());
         if (method != null) {
             method.invoke(object, o);
-        } else if (directAccessPropertyEnable == true) {
+        } else if (directAccessPropertyEnable) {
             field.set(object, o);
         }
     }
 
     private void setLocalDateTime(char[] jsonCharArray, int valueBeginOffset, int valueEndOffset, Object object,
-                                  Field field, Method method, StringBuilder fieldStringBuilder) throws IllegalAccessException,
-            InvocationTargetException {
+                                  Field field, Method method, StringBuilder fieldStringBuilder)
+            throws IllegalAccessException, InvocationTargetException {
         OkJsonDateTimeFormatter okjsonDateTimeFormatter;
         String defaultDateTimeFormatter;
         LocalDateTime localDateTime;
@@ -1054,7 +976,7 @@ class OkJsonParser {
         }
         if (method != null) {
             method.invoke(object, localDateTime);
-        } else if (directAccessPropertyEnable == true) {
+        } else if (directAccessPropertyEnable) {
             field.set(object, localDateTime);
         }
     }
@@ -1081,7 +1003,7 @@ class OkJsonParser {
         }
         if (method != null) {
             method.invoke(object, localTime);
-        } else if (directAccessPropertyEnable == true) {
+        } else if (directAccessPropertyEnable) {
             field.set(object, localTime);
         }
     }
@@ -1108,7 +1030,7 @@ class OkJsonParser {
         }
         if (method != null) {
             method.invoke(object, localDate);
-        } else if (directAccessPropertyEnable == true) {
+        } else if (directAccessPropertyEnable) {
             field.set(object, localDate);
         }
     }
@@ -1117,7 +1039,7 @@ class OkJsonParser {
             InvocationTargetException {
         if (method != null) {
             method.invoke(object, booleanValue);
-        } else if (directAccessPropertyEnable == true) {
+        } else if (directAccessPropertyEnable) {
             field.setBoolean(object, booleanValue);
         }
     }
@@ -1125,10 +1047,10 @@ class OkJsonParser {
     private void setDouble2(char[] jsonCharArray, int valueBeginOffset, int valueEndOffset, Object object,
                             Field field, Method method) throws IllegalAccessException, InvocationTargetException {
         double value = Double.valueOf(new String(jsonCharArray, valueBeginOffset,
-                valueEndOffset - valueBeginOffset + 1)).doubleValue();
+                valueEndOffset - valueBeginOffset + 1));
         if (method != null) {
             method.invoke(object, value);
-        } else if (directAccessPropertyEnable == true) {
+        } else if (directAccessPropertyEnable) {
             field.setDouble(object, value);
         }
     }
@@ -1136,10 +1058,10 @@ class OkJsonParser {
     private void setFloat2(char[] jsonCharArray, int valueBeginOffset, int valueEndOffset, Object object, Field field
             , Method method) throws IllegalAccessException, InvocationTargetException {
         float value = Float.valueOf(new String(jsonCharArray, valueBeginOffset,
-                valueEndOffset - valueBeginOffset + 1)).floatValue();
+                valueEndOffset - valueBeginOffset + 1));
         if (method != null) {
             method.invoke(object, value);
-        } else if (directAccessPropertyEnable == true) {
+        } else if (directAccessPropertyEnable) {
             field.setFloat(object, value);
         }
     }
@@ -1147,10 +1069,10 @@ class OkJsonParser {
     private void setLong2(char[] jsonCharArray, int valueBeginOffset, int valueEndOffset, Object object, Field field,
                           Method method) throws IllegalAccessException, InvocationTargetException {
         long value =
-                Long.valueOf(new String(jsonCharArray, valueBeginOffset, valueEndOffset - valueBeginOffset + 1)).longValue();
+                Long.valueOf(new String(jsonCharArray, valueBeginOffset, valueEndOffset - valueBeginOffset + 1));
         if (method != null) {
             method.invoke(object, value);
-        } else if (directAccessPropertyEnable == true) {
+        } else if (directAccessPropertyEnable) {
             field.setLong(object, value);
         }
     }
@@ -1158,10 +1080,10 @@ class OkJsonParser {
     private void setInteger2(char[] jsonCharArray, int valueBeginOffset, int valueEndOffset, Object object,
                              Field field, Method method) throws IllegalAccessException, InvocationTargetException {
         int value = Integer.valueOf(new String(jsonCharArray, valueBeginOffset,
-                valueEndOffset - valueBeginOffset + 1)).intValue();
+                valueEndOffset - valueBeginOffset + 1));
         if (method != null) {
             method.invoke(object, value);
-        } else if (directAccessPropertyEnable == true) {
+        } else if (directAccessPropertyEnable) {
             field.setInt(object, value);
         }
     }
@@ -1172,7 +1094,7 @@ class OkJsonParser {
                 valueEndOffset - valueBeginOffset + 1)).shortValue();
         if (method != null) {
             method.invoke(object, value);
-        } else if (directAccessPropertyEnable == true) {
+        } else if (directAccessPropertyEnable) {
             field.setShort(object, value);
         }
     }
@@ -1183,7 +1105,7 @@ class OkJsonParser {
                 valueEndOffset - valueBeginOffset + 1)).byteValue();
         if (method != null) {
             method.invoke(object, value);
-        } else if (directAccessPropertyEnable == true) {
+        } else if (directAccessPropertyEnable) {
             field.setByte(object, value);
         }
     }
@@ -1194,7 +1116,7 @@ class OkJsonParser {
                 valueEndOffset - valueBeginOffset + 1));
         if (method != null) {
             method.invoke(object, value);
-        } else if (directAccessPropertyEnable == true) {
+        } else if (directAccessPropertyEnable) {
             field.set(object, value);
         }
     }
@@ -1205,7 +1127,7 @@ class OkJsonParser {
                 valueEndOffset - valueBeginOffset + 1));
         if (method != null) {
             method.invoke(object, value);
-        } else if (directAccessPropertyEnable == true) {
+        } else if (directAccessPropertyEnable) {
             field.set(object, value);
         }
     }
@@ -1216,7 +1138,7 @@ class OkJsonParser {
                 valueEndOffset - valueBeginOffset + 1));
         if (method != null) {
             method.invoke(object, value);
-        } else if (directAccessPropertyEnable == true) {
+        } else if (directAccessPropertyEnable) {
             field.set(object, value);
         }
     }
@@ -1226,7 +1148,7 @@ class OkJsonParser {
         Long value = Long.valueOf(new String(jsonCharArray, valueBeginOffset, valueEndOffset - valueBeginOffset + 1));
         if (method != null) {
             method.invoke(object, value);
-        } else if (directAccessPropertyEnable == true) {
+        } else if (directAccessPropertyEnable) {
             field.set(object, value);
         }
     }
@@ -1237,7 +1159,7 @@ class OkJsonParser {
                 valueEndOffset - valueBeginOffset + 1));
         if (method != null) {
             method.invoke(object, value);
-        } else if (directAccessPropertyEnable == true) {
+        } else if (directAccessPropertyEnable) {
             field.set(object, value);
         }
     }
@@ -1247,7 +1169,7 @@ class OkJsonParser {
         Short value = Short.valueOf(new String(jsonCharArray, valueBeginOffset, valueEndOffset - valueBeginOffset + 1));
         if (method != null) {
             method.invoke(object, value);
-        } else if (directAccessPropertyEnable == true) {
+        } else if (directAccessPropertyEnable) {
             field.set(object, value);
         }
     }
@@ -1257,7 +1179,7 @@ class OkJsonParser {
         Byte value = Byte.valueOf(new String(jsonCharArray, valueBeginOffset, valueEndOffset - valueBeginOffset + 1));
         if (method != null) {
             method.invoke(object, value);
-        } else if (directAccessPropertyEnable == true) {
+        } else if (directAccessPropertyEnable) {
             field.set(object, value);
         }
     }
@@ -1273,7 +1195,7 @@ class OkJsonParser {
         }
         if (method != null) {
             method.invoke(object, value);
-        } else if (directAccessPropertyEnable == true) {
+        } else if (directAccessPropertyEnable) {
             field.set(object, value);
         }
     }
@@ -1281,8 +1203,8 @@ class OkJsonParser {
     private int stringToObjectProperties(char[] jsonCharArray, Object object) {
 
         Class clazz;
-        HashMap<String, Field> stringMapFields;
-        HashMap<String, Method> stringMapMethods;
+        LinkedHashMap<String, Field> stringMapFields;
+        LinkedHashMap<String, Method> stringMapMethods;
         Field[] fields;
         Field field;
         Method method = null;
@@ -1301,13 +1223,13 @@ class OkJsonParser {
 
             stringMapFields = stringMapFieldsCache.get().get(clazz.getName());
             if (stringMapFields == null) {
-                stringMapFields = new HashMap<String, Field>();
+                stringMapFields = new LinkedHashMap<String, Field>();
                 stringMapFieldsCache.get().put(clazz.getName(), stringMapFields);
             }
 
             stringMapMethods = stringMapMethodsCache.get().get(clazz.getName());
             if (stringMapMethods == null) {
-                stringMapMethods = new HashMap<String, Method>();
+                stringMapMethods = new LinkedHashMap<String, Method>();
                 stringMapMethodsCache.get().put(clazz.getName(), stringMapMethods);
             }
 
@@ -1416,7 +1338,7 @@ class OkJsonParser {
                     Object childObject;
 
                     if (field != null) {
-                        childObject = field.getType().newInstance();
+                        childObject = newInstance(field.getType());
                         if (childObject == null)
                             return OKJSON_ERROR_UNEXPECT;
                     } else {
@@ -1471,7 +1393,9 @@ class OkJsonParser {
     private int addArrayMap(String value, TokenType valueTokenType, List<Object> list) {
         try {
             if (valueTokenType == TokenType.TOKEN_TYPE_STRING) {
-                list.add(value);
+                StringBuilder sb = fieldStringBuilderCache.get();
+                list.add((sb != null && sb.length() > 0) ? sb.toString() : value);
+                sb.setLength(0); // 清空，避免后续误用旧内容
             } else if (valueTokenType == TokenType.TOKEN_TYPE_NULL) {
                 list.add(null);
             } else if (valueTokenType == TokenType.TOKEN_TYPE_INTEGER) {
@@ -1500,15 +1424,16 @@ class OkJsonParser {
         int nret;
 
         while (true) {
-            // token "value" or '{'
+            // 读到一个元素：值 / 对象 / 或者子数组
             nret = tokenJsonWord(jsonCharArray);
             if (nret == OKJSON_ERROR_END_OF_BUFFER) break;
             if (nret != 0) return nret;
 
-            if (tokenType == TokenType.TOKEN_TYPE_LEFT_BRACE) { // Object item
+            if (tokenType == TokenType.TOKEN_TYPE_LEFT_BRACE) {
+                // 子对象
                 try {
-                    Map<String, Object> childObject = new HashMap<>();
-                    nret = stringToObjectProperties(jsonCharArray, childObject);
+                    Map<String, Object> childObject = new LinkedHashMap<>();
+                    nret = toMapItems(jsonCharArray, childObject);
                     if (nret != 0) return nret;
 
                     list.add(childObject);
@@ -1516,8 +1441,19 @@ class OkJsonParser {
                     Log.error(e.getMessage(), e);
                     return OKJSON_ERROR_EXCEPTION;
                 }
-            } else if (isTokenValueType()) {
-                // value item
+            } else if (tokenType == TokenType.TOKEN_TYPE_LEFT_BRACKET) {
+                // 子数组（递归）
+                try {
+                    List<Object> childList = new LinkedList<>();
+                    nret = stringToArrayMap(jsonCharArray, childList);
+                    if (nret != 0) return nret;
+                    list.add(childList);
+                } catch (Exception e) {
+                    Log.error(e.getMessage(), e);
+                    return OKJSON_ERROR_EXCEPTION;
+                }
+            }else if (isTokenValueType(tokenType)) {
+                // 原始值（数字/布尔/字符串）
                 ;
             } else {
                 int beginPos = endOffset - 16; // ? 看不懂
@@ -1538,7 +1474,9 @@ class OkJsonParser {
 
             if (tokenType == TokenType.TOKEN_TYPE_COMMA ||
                     tokenType == TokenType.TOKEN_TYPE_RIGHT_BRACKET) {
-                if (list != null) {
+                // 只有当本元素是“值类型”时，才在这里补充 list.add(...)
+                // （对象/子数组已经在上面提前 add 过了）
+                if (list != null && isTokenValueType(valueTokenType)) {
                     String value = new String(jsonCharArray, valueBeginOffset, valueEndOffset - valueBeginOffset + 1);
 
                     errorCode = addArrayMap(value, valueTokenType, list);
@@ -1557,11 +1495,13 @@ class OkJsonParser {
         return 0;
     }
 
-    private boolean isTokenValueType() {
-        return tokenType == TokenType.TOKEN_TYPE_STRING ||
-                tokenType == TokenType.TOKEN_TYPE_INTEGER ||
-                tokenType == TokenType.TOKEN_TYPE_DECIMAL ||
-                tokenType == TokenType.TOKEN_TYPE_BOOL;
+    static boolean isTokenValueType(TokenType valueTokenType) {
+        return valueTokenType == TokenType.TOKEN_TYPE_STRING ||
+                valueTokenType == TokenType.TOKEN_TYPE_INTEGER ||
+                valueTokenType == TokenType.TOKEN_TYPE_DECIMAL ||
+                valueTokenType == TokenType.TOKEN_TYPE_BOOL ||
+                valueTokenType == TokenType.TOKEN_TYPE_NULL
+                ;
     }
 
     private int setMapItem(String value, TokenType valueTokenType, Map<String, Object> object, String field) {
@@ -1741,12 +1681,6 @@ class OkJsonParser {
         jsonOffset = 0;
         jsonLength = jsonCharArray.length;
 
-        if (initFieldsCache()) return null;
-
-        if (initMethodCache()) return null;
-
-        if (initStringBuilderCache()) return null;
-
         errorCode = tokenJsonWord(jsonCharArray);
         if (errorCode != 0) {
             return null;
@@ -1771,8 +1705,6 @@ class OkJsonParser {
         jsonOffset = 0;
         jsonLength = jsonCharArray.length;
 
-        if (initStringBuilderCache()) return null;
-
         errorCode = tokenJsonWord(jsonCharArray);
         if (errorCode != 0) {
             return null;
@@ -1783,7 +1715,7 @@ class OkJsonParser {
             return null;
         }
 
-        Map<String, Object> object = new HashMap<>();
+        Map<String, Object> object = new LinkedHashMap<>();
         errorCode = toMapItems(jsonCharArray, object);
 
         if (errorCode != 0) return null;
@@ -1802,46 +1734,26 @@ class OkJsonParser {
 
         return toMap(jsonString);
     }
+    public List<Object> toList(String jsonString) {
+        char[] jsonCharArray = jsonString.toCharArray();
+        jsonOffset = 0;
+        jsonLength = jsonCharArray.length;
 
-    private boolean initMethodCache() {
-        if (stringMapMethodsCache == null) {
-            stringMapMethodsCache = new ThreadLocal<HashMap<String, HashMap<String, Method>>>();
-            if (stringMapMethodsCache == null) {
-                errorDesc = "New object failed for clazz";
-                errorCode = OKJSON_ERROR_NEW_OBJECT;
-                return true;
-            }
-            stringMapMethodsCache.set(new HashMap<String, HashMap<String, Method>>());
+        errorCode = tokenJsonWord(jsonCharArray);
+        if (errorCode != 0) return null;
+
+        if (tokenType != TokenType.TOKEN_TYPE_LEFT_BRACKET) {
+            errorDesc = "expect '['";
+            errorCode = OKJSON_ERROR_UNEXPECT; // 也可按需新增专门错误码
+            return null;
         }
-        return false;
-    }
 
-    private boolean initFieldsCache() {
-        if (stringMapFieldsCache == null) {
-            stringMapFieldsCache = new ThreadLocal<HashMap<String, HashMap<String, Field>>>();
-            if (stringMapFieldsCache == null) {
-                errorDesc = "New object failed for clazz";
-                errorCode = OKJSON_ERROR_NEW_OBJECT;
-                return true;
-            }
-            stringMapFieldsCache.set(new HashMap<String, HashMap<String, Field>>());
-        }
-        return false;
-    }
+        List<Object> list = new LinkedList<>();
+        errorCode = stringToArrayMap(jsonCharArray, list);
+        if (errorCode != 0) return null;
 
-    private boolean initStringBuilderCache() {
-        if (fieldStringBuilderCache == null) {
-            fieldStringBuilderCache = new ThreadLocal<StringBuilder>();
-            if (fieldStringBuilderCache == null) {
-                errorDesc = "New object failed for clazz";
-                errorCode = OKJSON_ERROR_NEW_OBJECT;
-                return true;
-            }
-            fieldStringBuilderCache.set(new StringBuilder(1024));
-        }
-        return false;
+        return list;
     }
-
 
     public OkJsonParser() {
         this.strictPolicyEnable = false;
@@ -1889,21 +1801,21 @@ class OkJsonGenerator {
         ENUM,
     }
 
-    private static ThreadLocal<HashMap<String, LinkedList<OkJsonClassField>>>
-            classMapFieldListCache = new ThreadLocal<>();
-    private static ThreadLocal<OkJsonCharArrayBuilder>
-            jsonByteArrayBuilderCache = new ThreadLocal<>();
-    private static ThreadLocal<OkJsonCharArrayBuilder>
-            fieldByteArrayBuilderCache = new ThreadLocal<>();
-    private static ThreadLocal<HashMap<Class<?>, Boolean>>
-            basicTypeClassMapBooleanCache = new ThreadLocal<>();
+    private static final ThreadLocal<LinkedHashMap<String, LinkedList<OkJsonClassField>>>
+            classMapFieldListCache = ThreadLocal.withInitial(LinkedHashMap::new);
+    private static final ThreadLocal<OkJsonCharArrayBuilder>
+            jsonByteArrayBuilderCache = ThreadLocal.withInitial(() -> new OkJsonCharArrayBuilder(1024));
+    private static final ThreadLocal<OkJsonCharArrayBuilder>
+            fieldByteArrayBuilderCache = ThreadLocal.withInitial(() -> new OkJsonCharArrayBuilder(1024));
+    private static final ThreadLocal<LinkedHashMap<Class<?>, Boolean>>
+            basicTypeClassMapBooleanCache = ThreadLocal.withInitial(OkJsonGenerator::createBasicTypes);
 
     static final char SEP_FIELD_CHAR = ',';
-    static final char[] SEP_FIELD_CHAR_PRETTY = " ,\n".toCharArray();
+    static final char[] SEP_FIELD_CHAR_PRETTY = ",\n".toCharArray();
     static final String NULL_STRING = "null";
 
-    static HashMap<Class<?>, Boolean> createBasicTypes() {
-        HashMap<Class<?>, Boolean> basicTypeClassMapString = new HashMap<>();
+    static LinkedHashMap<Class<?>, Boolean> createBasicTypes() {
+        LinkedHashMap<Class<?>, Boolean> basicTypeClassMapString = new LinkedHashMap<>();
         basicTypeClassMapString.put(String.class, Boolean.TRUE);
         basicTypeClassMapString.put(Byte.class, Boolean.TRUE);
         basicTypeClassMapString.put(Short.class, Boolean.TRUE);
@@ -1923,7 +1835,7 @@ class OkJsonGenerator {
     static void setClassType(Class<?> type, OkJsonClassField classField) {
         if (type == null) return;
 
-        HashMap<Class<?>, Boolean> basicTypeClassMapBoolean = basicTypeClassMapBooleanCache.get();
+        LinkedHashMap<Class<?>, Boolean> basicTypeClassMapBoolean = basicTypeClassMapBooleanCache.get();
 
         if (type == String.class) classField.type = ClassFieldType.STRING;
         else if (type.isArray()) classField.type = ClassFieldType.ARRAY;
@@ -2069,29 +1981,13 @@ class OkJsonGenerator {
         }
 
 
-        if (classMapFieldListCache.get() == null) classMapFieldListCache.set(new HashMap<>());
         OkJsonCharArrayBuilder jsonCharArrayBuilder;
-        if (jsonByteArrayBuilderCache.get() == null) {
-            jsonCharArrayBuilder = new OkJsonCharArrayBuilder(1024);
-            jsonByteArrayBuilderCache.set(jsonCharArrayBuilder);
-        } else {
-            jsonCharArrayBuilder = jsonByteArrayBuilderCache.get();
-        }
+        jsonCharArrayBuilder = jsonByteArrayBuilderCache.get();
         jsonCharArrayBuilder.setLength(0);
-        if (fieldByteArrayBuilderCache.get() == null) fieldByteArrayBuilderCache.set(new OkJsonCharArrayBuilder(1024));
-        if (basicTypeClassMapBooleanCache.get() == null) basicTypeClassMapBooleanCache.set(createBasicTypes());
 
-        if (prettyFormatEnable) {
-            jsonCharArrayBuilder.appendCharArray("{\n".toCharArray());
-        } else {
-            jsonCharArrayBuilder.appendChar('{');
-        }
+        beginObject(jsonCharArrayBuilder);
         stringifyObject(object, jsonCharArrayBuilder, 0);
-        if (prettyFormatEnable) {
-            jsonCharArrayBuilder.appendCharArray("}\n".toCharArray());
-        } else {
-            jsonCharArrayBuilder.appendChar('}');
-        }
+        endObject(jsonCharArrayBuilder, 0);
         return jsonCharArrayBuilder.toString();
 
 
@@ -2102,7 +1998,7 @@ class OkJsonGenerator {
         Class<?> clazz;
 
         if (object instanceof Map) {
-            stringifyMap((Map<String, Object>) object, jsonCharArrayBuilder, depth);
+            stringifyMap((Map<String, Object>) object, jsonCharArrayBuilder, depth + 1);
         } else {
             clazz = object.getClass();
             LinkedList<OkJsonClassField> classFieldList;
@@ -2111,7 +2007,11 @@ class OkJsonGenerator {
             for (OkJsonClassField classField : classFieldList) {
                 Object value = classField.getFieldValue(object);
                 if (value == null) {
-                    writeEmptyField(jsonCharArrayBuilder, depth, classField.fieldName);
+                    if (nullEnable) {
+                        fieldIndex++;
+                        writeComma1(jsonCharArrayBuilder, fieldIndex);
+                        writeEmptyField(jsonCharArrayBuilder, depth, classField.fieldName);
+                    }
                     continue;
                 }
 
@@ -2126,29 +2026,12 @@ class OkJsonGenerator {
 
     String stringifyMap(Map<String, Object> object) throws Exception {
         if (object == null) return "null";
-        if (classMapFieldListCache.get() == null) classMapFieldListCache.set(new HashMap<>());
-        OkJsonCharArrayBuilder jsonCharArrayBuilder;
-        if (jsonByteArrayBuilderCache.get() == null) {
-            jsonCharArrayBuilder = new OkJsonCharArrayBuilder(1024);
-            jsonByteArrayBuilderCache.set(jsonCharArrayBuilder);
-        } else {
-            jsonCharArrayBuilder = jsonByteArrayBuilderCache.get();
-        }
+        OkJsonCharArrayBuilder jsonCharArrayBuilder = jsonByteArrayBuilderCache.get();
         jsonCharArrayBuilder.setLength(0);
-        if (fieldByteArrayBuilderCache.get() == null) fieldByteArrayBuilderCache.set(new OkJsonCharArrayBuilder(1024));
-        if (basicTypeClassMapBooleanCache.get() == null) basicTypeClassMapBooleanCache.set(createBasicTypes());
 
-        if (prettyFormatEnable) {
-            jsonCharArrayBuilder.appendCharArray("{\n".toCharArray());
-        } else {
-            jsonCharArrayBuilder.appendChar('{');
-        }
+        beginObject(jsonCharArrayBuilder);
         stringifyMap(object, jsonCharArrayBuilder, 0);
-        if (prettyFormatEnable) {
-            jsonCharArrayBuilder.appendCharArray("}\n".toCharArray());
-        } else {
-            jsonCharArrayBuilder.appendChar('}');
-        }
+        endObject(jsonCharArrayBuilder, 0);
         return jsonCharArrayBuilder.toString();
     }
 
@@ -2160,9 +2043,12 @@ class OkJsonGenerator {
         int fieldIndex = 0;
         for (String k : keys) {
             Object value = m.get(k);
-
             if (value == null) {
-                writeEmptyField(jsonCharArrayBuilder, depth, k.toCharArray());
+                if (nullEnable) {
+                    fieldIndex++;
+                    writeComma1(jsonCharArrayBuilder, fieldIndex);
+                    writeEmptyField(jsonCharArrayBuilder, depth, k.toCharArray());
+                }
                 continue;
             }
 
@@ -2183,19 +2069,10 @@ class OkJsonGenerator {
     String stringifyList(List list) throws Exception {
         if (list == null) return "null";
 
-        if (classMapFieldListCache.get() == null) classMapFieldListCache.set(new HashMap<>());
-        OkJsonCharArrayBuilder jsonCharArrayBuilder;
-        if (jsonByteArrayBuilderCache.get() == null) {
-            jsonCharArrayBuilder = new OkJsonCharArrayBuilder(1024);
-            jsonByteArrayBuilderCache.set(jsonCharArrayBuilder);
-        } else {
-            jsonCharArrayBuilder = jsonByteArrayBuilderCache.get();
-        }
+        OkJsonCharArrayBuilder jsonCharArrayBuilder = jsonByteArrayBuilderCache.get();
         jsonCharArrayBuilder.setLength(0);
-        if (fieldByteArrayBuilderCache.get() == null) fieldByteArrayBuilderCache.set(new OkJsonCharArrayBuilder(1024));
-        if (basicTypeClassMapBooleanCache.get() == null) basicTypeClassMapBooleanCache.set(createBasicTypes());
+        beginArray(jsonCharArrayBuilder);
 
-        jsonCharArrayBuilder.appendChar('[');
         // handle Array
         int length = list.size();
         for (int i = 0; i < length; i++) {
@@ -2205,15 +2082,16 @@ class OkJsonGenerator {
             Class<?> type = value.getClass();
             setClassType(type, classField);
 
-            writeComma1(jsonCharArrayBuilder, i + 1);
+            writeCommaWithDepth(jsonCharArrayBuilder,  1,  i);
 
             if (value == null) {
-                jsonCharArrayBuilder.appendJsonString(NULL_STRING);
+                jsonCharArrayBuilder.appendString(NULL_STRING);
                 continue;
             }
 
-            new ElementWriter(value, classField, jsonCharArrayBuilder, 0).write();
+            new ElementWriter(value, classField, jsonCharArrayBuilder, 1).write();
         }
+        jsonCharArrayBuilder.appendEnter(prettyFormatEnable);
         jsonCharArrayBuilder.appendChar(']');
         return jsonCharArrayBuilder.toString();
     }
@@ -2224,7 +2102,7 @@ class OkJsonGenerator {
             throw new IllegalArgumentException("Object is not an array");
         }
 
-        if (classMapFieldListCache.get() == null) classMapFieldListCache.set(new HashMap<>());
+        if (classMapFieldListCache.get() == null) classMapFieldListCache.set(new LinkedHashMap<>());
         OkJsonCharArrayBuilder jsonCharArrayBuilder;
         if (jsonByteArrayBuilderCache.get() == null) {
             jsonCharArrayBuilder = new OkJsonCharArrayBuilder(1024);
@@ -2236,7 +2114,7 @@ class OkJsonGenerator {
         if (fieldByteArrayBuilderCache.get() == null) fieldByteArrayBuilderCache.set(new OkJsonCharArrayBuilder(1024));
         if (basicTypeClassMapBooleanCache.get() == null) basicTypeClassMapBooleanCache.set(createBasicTypes());
 
-        jsonCharArrayBuilder.appendChar('[');
+        beginArray(jsonCharArrayBuilder);
         // handle Array
         int length = Array.getLength(object);
         for (int i = 0; i < length; i++) {
@@ -2246,22 +2124,23 @@ class OkJsonGenerator {
             Class<?> type = value.getClass();
             setClassType(type, classField);
 
-            writeCommaWithDepth( jsonCharArrayBuilder,  0,  i);
+            writeCommaWithDepth(jsonCharArrayBuilder,  0,  i);
             if (value == null) {
-                jsonCharArrayBuilder.appendJsonString(NULL_STRING);
+                jsonCharArrayBuilder.appendString(NULL_STRING);
                 continue;
             }
 
             new ElementWriter(value, classField, jsonCharArrayBuilder, 0).write();
 
         }
+        jsonCharArrayBuilder.appendEnter(prettyFormatEnable);
         jsonCharArrayBuilder.appendChar(']');
         return jsonCharArrayBuilder.toString();
     }
 
     String unfoldEscape(String value) {
 
-        OkJsonCharArrayBuilder fieldCharArrayBuilder = fieldByteArrayBuilderCache.get(); // TODO: 为什么会是空，前面是有值
+        OkJsonCharArrayBuilder fieldCharArrayBuilder = fieldByteArrayBuilderCache.get();
         char[] jsonCharArrayBuilder;
         int jsonCharArrayLength;
         int jsonCharArrayIndex;
@@ -2353,7 +2232,7 @@ class OkJsonGenerator {
     void writeComma1(OkJsonCharArrayBuilder jsonCharArrayBuilder, int fieldIndex) {
         if (fieldIndex > 1) {
             if (prettyFormatEnable) {
-                jsonCharArrayBuilder.appendCharArrayWith3(SEP_FIELD_CHAR_PRETTY);
+                jsonCharArrayBuilder.appendCharArray(SEP_FIELD_CHAR_PRETTY);
             } else {
                 jsonCharArrayBuilder.appendChar(SEP_FIELD_CHAR);
             }
@@ -2371,42 +2250,73 @@ class OkJsonGenerator {
         }
     }
 
-    void stringifyList(List<Object> array, int arrayCount, OkJsonClassField classField,
+    void stringifyList(List<Object> list, OkJsonClassField classField,
                        OkJsonCharArrayBuilder jsonCharArrayBuilder,
                        int depth) throws Exception {
-
-//        HashMap<Class<?>, Boolean> basicTypeClassMapBoolean = basicTypeClassMapBooleanCache.get();
-        for (int i = 0; i < array.size(); i++) {
+        if (list.size() == 0) {
+            jsonCharArrayBuilder.appendString("[]");
+            return;
+        }
+        beginArray(jsonCharArrayBuilder);
+        for (int i = 0; i < list.size(); i++) {
             writeCommaWithDepth(jsonCharArrayBuilder, depth, i);
-            Object object = array.get(i);
+            Object object = list.get(i);
             if (object == null) {
-                jsonCharArrayBuilder.appendJsonString("null");
+                jsonCharArrayBuilder.appendString("null");
                 continue;
             }
             OkJsonClassField cf = new OkJsonClassField();
             setClassType(object.getClass(), cf);
             new ElementWriter(object, cf, jsonCharArrayBuilder, depth).write();
         }
-
         jsonCharArrayBuilder.appendEnter(prettyFormatEnable);
+        endArray(jsonCharArrayBuilder, depth);
+    }
+
+    void beginArray(OkJsonCharArrayBuilder jsonCharArrayBuilder) {
+        if (prettyFormatEnable)
+            jsonCharArrayBuilder.appendString("[\n");
+        else
+            jsonCharArrayBuilder.appendChar('[');
+    }
+
+    void endArray(OkJsonCharArrayBuilder jsonCharArrayBuilder, int depth) {
+        if (prettyFormatEnable) {
+            jsonCharArrayBuilder.appendTabs(depth);
+        }
+        jsonCharArrayBuilder.appendChar(']');
+    }
+
+
+    private void beginObject(OkJsonCharArrayBuilder jsonCharArrayBuilder) {
+        if (prettyFormatEnable) {
+            jsonCharArrayBuilder.appendString("{\n");
+        } else {
+            jsonCharArrayBuilder.appendChar('{');
+        }
+    }
+
+    private void endObject(OkJsonCharArrayBuilder jsonCharArrayBuilder, int depth) {
+        if (prettyFormatEnable) jsonCharArrayBuilder.appendTabs(depth );
+        jsonCharArrayBuilder.appendChar('}');
     }
 
     void stringifyArray(Object array, int arrayCount, OkJsonClassField classField,
                         OkJsonCharArrayBuilder jsonCharArrayBuilder, int depth)
             throws Exception {
-        if (array == null || !array.getClass().isArray()) {
-            jsonCharArrayBuilder.appendJsonString("[]");
+        if (array == null || !array.getClass().isArray() || Array.getLength(array) == 0) {
+            jsonCharArrayBuilder.appendString("[]");
             return;
         }
 
-        jsonCharArrayBuilder.appendChar('[');
+        beginArray(jsonCharArrayBuilder);
         int len = Array.getLength(array);
         for (int i = 0; i < len; i++) {
             writeCommaWithDepth(jsonCharArrayBuilder, depth, i);
             Object object = Array.get(array, i);
             if (object == null) {
                 writeCommaWithDepth(jsonCharArrayBuilder, depth, i);
-                jsonCharArrayBuilder.appendJsonString("null");
+                jsonCharArrayBuilder.appendString("null");
                 continue;
             }
             OkJsonClassField cf = new OkJsonClassField();
@@ -2415,56 +2325,15 @@ class OkJsonGenerator {
         }
 
         jsonCharArrayBuilder.appendEnter(prettyFormatEnable);
-
-        jsonCharArrayBuilder.appendChar(']');
+        endArray(jsonCharArrayBuilder, depth);
     }
-//
-//    void writeElemOfArray(OkJsonClassField classField, OkJsonCharArrayBuilder jsonCharArrayBuilder, int depth,
-//                          Object object, HashMap<Class<?>, Boolean> basicTypeClassMapBoolean, int i) throws Exception {
-//        writeCommaWithDepth(jsonCharArrayBuilder, depth, i);
-//        Class<?> typeClazz = object.getClass();
-//        Boolean b = basicTypeClassMapBoolean.get(typeClazz);
-//        if (b == null) b = false;
-//        if (b) {
-//            if (typeClazz == String.class) {
-//                String str = (String) object;
-//                jsonCharArrayBuilder.appendJsonStringWithQuote(str);
-//            } else if (typeClazz == LocalDate.class) {
-//                writeLocalDate(classField, jsonCharArrayBuilder, (LocalDate) object);
-//            } else if (typeClazz == LocalTime.class) {
-//                writeLocalTime(classField, jsonCharArrayBuilder, (LocalTime) object);
-//            } else if (typeClazz == LocalDateTime.class) {
-//                writeLocalDateTime(classField, jsonCharArrayBuilder, (LocalDateTime) object);
-//            } else {
-//                jsonCharArrayBuilder.appendJsonString(object.toString());
-//            }
-//        } else {
-//            addObjectBegin(jsonCharArrayBuilder, depth);
-//            stringifyObject(object, jsonCharArrayBuilder, depth + 1);
-//            addObjectEnd(jsonCharArrayBuilder, depth);
-//        }
-//    }
-//    private void addObjectEnd(OkJsonCharArrayBuilder jsonCharArrayBuilder, int depth) {
-//    if (prettyFormatEnable) {
-//        jsonCharArrayBuilder.appendTabs(depth + 1).appendString("}");
-//    } else {
-//        jsonCharArrayBuilder.appendChar('}');
-//    }
-//}
-//
-//    private void addObjectBegin(OkJsonCharArrayBuilder jsonCharArrayBuilder, int depth) {
-//        if (prettyFormatEnable) {
-//            jsonCharArrayBuilder.appendTabs(depth + 1).appendString("{\n");
-//        } else {
-//            jsonCharArrayBuilder.appendChar('{');
-//        }
-//    }
+
 
 
     private void writeCommaWithDepth(OkJsonCharArrayBuilder jsonCharArrayBuilder, int depth, int arrayIndex) {
         if (arrayIndex > 0) {
             if (prettyFormatEnable) {
-                jsonCharArrayBuilder.appendCharArrayWith3(SEP_FIELD_CHAR_PRETTY).appendTabs(depth + 1);
+                jsonCharArrayBuilder.appendCharArray(SEP_FIELD_CHAR_PRETTY).appendTabs(depth + 1);
             } else {
                 jsonCharArrayBuilder.appendChar(SEP_FIELD_CHAR);
             }
@@ -2492,68 +2361,51 @@ class OkJsonGenerator {
             switch (classField.type) {
             case STRING:
             case ENUM:
-                jsonCharArrayBuilder.appendJsonStringWithQuote(unfoldEscape(value.toString()));
+                writeStringField();
                 break;
             case SCALAR:
-                jsonCharArrayBuilder.appendJsonString(value.toString());
+                writeScalarField();
                 break;
             case LOCAL_DATE:
-                writeLocalDate(classField, jsonCharArrayBuilder, (LocalDate) value);
+                writeLocalDate();
                 break;
             case LOCAL_TIME:
-                writeLocalTime( classField,  jsonCharArrayBuilder, (LocalTime) value);
+                writeLocalTime();
                 break;
             case LOCAL_DATE_TIME:
-                writeLocalDateTime(classField, jsonCharArrayBuilder, (LocalDateTime) value);
+                writeLocalDateTime( );
                 break;
             case LIST:
-                List list = (List) value;
-                int listSize = list.size();
-                if (listSize > 0) {
-                    jsonCharArrayBuilder.appendChar('[');
-                    stringifyList(list, listSize, classField, jsonCharArrayBuilder, depth+1);
-                    jsonCharArrayBuilder.appendChar(']');
-                } else {
-                    jsonCharArrayBuilder.appendJsonString("[]");
-                }
+                stringifyList((List)value, classField, jsonCharArrayBuilder, depth + 1);
                 break;
             case ARRAY:
-                int arrayCount = Array.getLength(value);
-                if (arrayCount > 0) {
-                    if (prettyFormatEnable) jsonCharArrayBuilder.appendTabs(1);
-                    stringifyArray(value, arrayCount, classField, jsonCharArrayBuilder, depth+1);
-                } else {
-                    jsonCharArrayBuilder.appendJsonString("[]");
-                }
+                stringifyArray(value, Array.getLength(value), classField, jsonCharArrayBuilder, depth + 1);
                 break;
-
             case SUBCLASS:
-                if (prettyFormatEnable) {
-                    jsonCharArrayBuilder.appendChar('{');
-                    stringifyObject(value, jsonCharArrayBuilder, depth+1);
-                    jsonCharArrayBuilder.appendTabs(1).appendChar('}');
-                } else {
-                    jsonCharArrayBuilder.appendChar('{');
-                    stringifyObject(value, jsonCharArrayBuilder, depth+1);
-                    jsonCharArrayBuilder.appendChar('}');
-                }
+                beginObject(jsonCharArrayBuilder);
+                stringifyObject(value, jsonCharArrayBuilder, depth+1);
+                endObject(jsonCharArrayBuilder, depth+1);
                 break;
             case MAP:
-                if (prettyFormatEnable) {
-                    jsonCharArrayBuilder.appendChar('{');
-                    stringifyMap((Map<String, Object>) value, jsonCharArrayBuilder, 1);
-                    jsonCharArrayBuilder.appendTabs(1).appendChar('}');
-                } else {
-                    jsonCharArrayBuilder.appendChar('{');
-                    stringifyMap((Map<String, Object>) value, jsonCharArrayBuilder, 1);
-                    jsonCharArrayBuilder.appendChar('}');
-                }
+                beginObject(jsonCharArrayBuilder);
+                stringifyMap((Map<String, Object>) value, jsonCharArrayBuilder, depth+1);
+                endObject(jsonCharArrayBuilder, depth+1);
                 break;
             }
         }
 
-        void writeLocalDateTime(OkJsonClassField classField, OkJsonCharArrayBuilder jsonCharArrayBuilder,
-                                       LocalDateTime localDateTime) {
+        private void writeScalarField() {
+            jsonCharArrayBuilder.appendString(value.toString());
+        }
+
+        private void writeStringField() {
+            String string = unfoldEscape(value.toString());
+            jsonCharArrayBuilder.appendJsonStringWithQuote(string);
+        }
+
+
+        void writeLocalDateTime() {
+            LocalDateTime localDateTime = (LocalDateTime) value;
             String dateTimeFormatter;
             if (classField.okjsonDateTimeFormatter != null) {
                 dateTimeFormatter = classField.okjsonDateTimeFormatter.format();
@@ -2561,11 +2413,12 @@ class OkJsonGenerator {
                 dateTimeFormatter = "yyyy-MM-dd'T'HH:mm:ss.SSS";
             }
             String localDateTimeString = DateTimeFormatter.ofPattern(dateTimeFormatter).format(localDateTime);
+            if (prettyFormatEnable) jsonCharArrayBuilder.appendTabs(depth + 1);
             jsonCharArrayBuilder.appendJsonStringWithQuote(localDateTimeString);
         }
 
-        void writeLocalTime(OkJsonClassField classField, OkJsonCharArrayBuilder jsonCharArrayBuilder,
-                                   LocalTime localTime) {
+        void writeLocalTime() {
+            LocalTime localTime = (LocalTime) value;
             String timeFormatter;
             if (classField.okjsonDateTimeFormatter != null) {
                 timeFormatter = classField.okjsonDateTimeFormatter.format();
@@ -2573,11 +2426,12 @@ class OkJsonGenerator {
                 timeFormatter = "HH:mm:ss.SSS";
             }
             String localTimeString = DateTimeFormatter.ofPattern(timeFormatter).format(localTime);
+            if (prettyFormatEnable) jsonCharArrayBuilder.appendTabs(depth + 1);
             jsonCharArrayBuilder.appendJsonStringWithQuote(localTimeString);
         }
 
-        void writeLocalDate(OkJsonClassField classField, OkJsonCharArrayBuilder jsonCharArrayBuilder,
-                                   LocalDate localDate) {
+        void writeLocalDate() {
+            LocalDate localDate = (LocalDate) value;
             String dateFormatter = "yyyy-MM-dd";
             if (classField.okjsonDateTimeFormatter != null) {
                 dateFormatter = classField.okjsonDateTimeFormatter.format();
@@ -2586,6 +2440,7 @@ class OkJsonGenerator {
             jsonCharArrayBuilder.appendJsonStringWithQuote(localDateString);
         }
     }
+
     class FieldWriter {
         OkJsonCharArrayBuilder jsonCharArrayBuilder;
         int depth;
@@ -2608,28 +2463,28 @@ class OkJsonGenerator {
             writeComma1(jsonCharArrayBuilder, fieldIndex);
             switch (classField.type) {
             case STRING:
-                writeStringField(jsonCharArrayBuilder, depth, classField, (String) value);
+                writeStringField();
                 break;
             case SCALAR:
-                writeScalarField(jsonCharArrayBuilder, depth, classField, value);
+                writeScalarField();
                 break;
             case LOCAL_DATE:
-                writeLocalDateField(jsonCharArrayBuilder, depth, classField, (LocalDate) value);
+                writeLocalDateField();
                 break;
             case LOCAL_TIME:
-                writeLocalTimeField(jsonCharArrayBuilder, depth, classField, (LocalTime) value);
+                writeLocalTimeField();
                 break;
             case LOCAL_DATE_TIME:
-                writeLocalDateTimeField(jsonCharArrayBuilder, depth, classField, (LocalDateTime) value);
+                writeLocalDateTimeField();
                 break;
             case LIST:
-                handleListField(jsonCharArrayBuilder, depth, classField, (List<Object>) value);
+                writeListField(jsonCharArrayBuilder, depth, classField, (List<Object>) value);
                 break;
             case ARRAY:
-                handleArrayField(value, jsonCharArrayBuilder, depth, classField);
+                writeArrayField(value, jsonCharArrayBuilder, depth, classField);
                 break;
             case ENUM:
-                writeEnumField(jsonCharArrayBuilder, depth, classField, (Enum) value);
+                writeEnumField();
                 break;
             case SUBCLASS:
             case MAP:
@@ -2640,30 +2495,32 @@ class OkJsonGenerator {
 
 
         void writeObjectOrMapField(OkJsonCharArrayBuilder jsonCharArrayBuilder,
-                                           int depth, OkJsonClassField classField, Object subObject)
+                                   int depth, OkJsonClassField classField, Object subObject)
                 throws Exception {
             if (prettyFormatEnable) {
                 jsonCharArrayBuilder.appendTabs(depth + 1);
-                jsonCharArrayBuilder.appendJsonNameAndColonAndOpenBytePretty(classField.fieldName, '{');
+                jsonCharArrayBuilder.appendPairPretty(classField.fieldName, '{');
                 stringifyObject(subObject, jsonCharArrayBuilder, depth + 1);
                 jsonCharArrayBuilder.appendTabs(depth + 1).appendChar('}');
             } else {
-                jsonCharArrayBuilder.appendJsonNameAndColonAndOpenByte(classField.fieldName, '{');
+                jsonCharArrayBuilder.appendPair(classField.fieldName, '{');
                 stringifyObject(subObject, jsonCharArrayBuilder, depth + 1);
                 jsonCharArrayBuilder.appendChar('}');
             }
         }
 
-        void writeEnumField(OkJsonCharArrayBuilder jsonCharArrayBuilder, int depth, OkJsonClassField classField,
-                                    Enum enumObject) {
+        void writeEnumField() {
+            Enum enumObject = (Enum) value;
             if (prettyFormatEnable) {
                 jsonCharArrayBuilder.appendTabs(depth + 1);
+                jsonCharArrayBuilder.appendPairWithQuotePretty(classField.fieldName, enumObject.name());
+            } else {
                 jsonCharArrayBuilder.appendPairWithQuote(classField.fieldName, enumObject.name());
             }
         }
 
-        void writeLocalDateTimeField(OkJsonCharArrayBuilder jsonCharArrayBuilder, int depth,
-                                             OkJsonClassField classField, LocalDateTime localDateTime) {
+        void writeLocalDateTimeField() {
+            LocalDateTime localDateTime = (LocalDateTime) value;
             String defaultDateTimeFormatter = "yyyy-MM-dd HH:mm:ss";
             if (classField.okjsonDateTimeFormatter != null)
                 defaultDateTimeFormatter = classField.okjsonDateTimeFormatter.format();
@@ -2676,8 +2533,8 @@ class OkJsonGenerator {
             }
         }
 
-        void writeLocalTimeField(OkJsonCharArrayBuilder jsonCharArrayBuilder, int depth,
-                                         OkJsonClassField classField, LocalTime localTime) {
+        void writeLocalTimeField() {
+            LocalTime localTime = (LocalTime) value;
             String defaultDateTimeFormatter = "HH:mm:ss";
             if (classField.okjsonDateTimeFormatter != null)
                 defaultDateTimeFormatter = classField.okjsonDateTimeFormatter.format();
@@ -2690,8 +2547,8 @@ class OkJsonGenerator {
             }
         }
 
-        void writeLocalDateField(OkJsonCharArrayBuilder jsonCharArrayBuilder, int depth, OkJsonClassField classField,
-                                 LocalDate localDate) {
+        void writeLocalDateField() {
+            LocalDate localDate = (LocalDate) value;
             String defaultDateTimeFormatter = "yyyy-MM-dd";
             if (classField.okjsonDateTimeFormatter != null)
                 defaultDateTimeFormatter = classField.okjsonDateTimeFormatter.format();
@@ -2704,71 +2561,52 @@ class OkJsonGenerator {
             }
         }
 
-        void writeScalarField(OkJsonCharArrayBuilder jsonCharArrayBuilder, int depth, OkJsonClassField classField,
-                              Object value) {
+        void writeScalarField() {
             if (prettyFormatEnable) {
                 jsonCharArrayBuilder.appendTabs(depth + 1);
-                jsonCharArrayBuilder.appendPairPretty(classField.fieldName, value.toString());
+                jsonCharArrayBuilder.appendPairPretty(classField.fieldName, value ==null ? "null" :value.toString());
             } else {
-                jsonCharArrayBuilder.appendPair(classField.fieldName, value.toString());
+                jsonCharArrayBuilder.appendPair(classField.fieldName, value ==null ? "null": value.toString());
             }
         }
 
-        void writeStringField(OkJsonCharArrayBuilder jsonCharArrayBuilder, int depth, OkJsonClassField classField,
-                              String string) {
-            string = unfoldEscape(string);
-            if (prettyFormatEnable) {
-                jsonCharArrayBuilder.appendTabs(depth + 1);
-            }
-            jsonCharArrayBuilder.appendPairWithQuote(classField.fieldName, string);
+        void writeStringField() {
+            String string = unfoldEscape((String)value);
+            if (prettyFormatEnable) jsonCharArrayBuilder.appendTabs(depth + 1);
+            if (prettyFormatEnable)
+                jsonCharArrayBuilder.appendPairWithQuotePretty(classField.fieldName, string);
+            else
+                jsonCharArrayBuilder.appendPairWithQuote(classField.fieldName, string);
         }
 
-        void handleListField(OkJsonCharArrayBuilder jsonCharArrayBuilder,
-                             int depth, OkJsonClassField classField, List<Object> list)
+        void writeListField(OkJsonCharArrayBuilder jsonCharArrayBuilder,
+                            int depth, OkJsonClassField classField, List<Object> list)
                 throws Exception {
-            int arrayCount = list.size();
-            if (prettyFormatEnable) {
-                jsonCharArrayBuilder.appendTabs(depth + 1);
-            }
-            if (arrayCount > 0) {
-                if (prettyFormatEnable) {
-                    jsonCharArrayBuilder.appendJsonNameAndColonAndCharArray(classField.fieldName, "[\n".toCharArray());
-                } else {
-                    jsonCharArrayBuilder.appendJsonNameAndColonAndOpenByte(classField.fieldName, '[');
-                }
-                stringifyList(list, arrayCount, classField, jsonCharArrayBuilder, depth + 1);
-                if (prettyFormatEnable) {
-                    jsonCharArrayBuilder.appendTabs(depth + 1);
-                }
-                jsonCharArrayBuilder.appendChar(']');
-            } else {
-                jsonCharArrayBuilder.appendEmptyJsonArray(prettyFormatEnable, depth, classField.fieldName);
-            }
+            if (prettyFormatEnable) jsonCharArrayBuilder.appendTabs(depth + 1);
+            if (prettyFormatEnable)
+                jsonCharArrayBuilder.appendFieldNamePretty(classField.fieldName);
+            else
+                jsonCharArrayBuilder.appendFieldName(classField.fieldName);
+
+            stringifyList(list, classField, jsonCharArrayBuilder, depth + 1);
         }
 
-        void handleArrayField(Object array, OkJsonCharArrayBuilder jsonCharArrayBuilder,
-                              int depth, OkJsonClassField classField) throws Exception {
+
+        void writeArrayField(Object array, OkJsonCharArrayBuilder jsonCharArrayBuilder,
+                             int depth, OkJsonClassField classField) throws Exception {
             int arrayCount = Array.getLength(array);
-            if (prettyFormatEnable) {
-                jsonCharArrayBuilder.appendTabs(depth + 1);
-            }
-            if (arrayCount > 0) {
-                if (prettyFormatEnable) jsonCharArrayBuilder.appendTabs(depth + 1);
-                if (prettyFormatEnable) {
-                    jsonCharArrayBuilder.appendJsonNameAndColonAndCharArray(classField.fieldName, "[\n".toCharArray());
-                } else {
-                    jsonCharArrayBuilder.appendJsonNameAndColonAndOpenByte(classField.fieldName, '[');
-                }
-                stringifyArray(array, arrayCount, classField, jsonCharArrayBuilder, depth + 1);
-                if (prettyFormatEnable) {
-                    jsonCharArrayBuilder.appendTabs(depth + 1);
-                }
-                jsonCharArrayBuilder.appendChar(']');
-            } else {
-                jsonCharArrayBuilder.appendEmptyJsonArray(prettyFormatEnable, depth, classField.fieldName);
-            }
+            if (prettyFormatEnable) jsonCharArrayBuilder.appendTabs(depth + 1);
+
+            if (prettyFormatEnable)
+                jsonCharArrayBuilder.appendFieldNamePretty(classField.fieldName);
+            else
+                jsonCharArrayBuilder.appendFieldName(classField.fieldName);
+
+            // 由 stringifyArray 写入 '[' ... ']'，这里不再手动加括号
+            stringifyArray(array, arrayCount, classField, jsonCharArrayBuilder, depth + 1);
         }
     }
+
 
 }
 
@@ -2895,7 +2733,7 @@ class OkJsonCharArrayBuilder {
             System.arraycopy(TABS.toCharArray(), 0, buf, bufLength, tabCount);
             bufLength += tabCount;
         } else {
-            for (int i = 1; i < tabCount; i++) {
+            for (int i = 0; i < tabCount; i++) {
                 buf[bufLength] = '\t';
                 bufLength++;
             }
@@ -2904,7 +2742,7 @@ class OkJsonCharArrayBuilder {
         return this;
     }
 
-    public OkJsonCharArrayBuilder appendJsonNameAndColonAndOpenByte(char[] name, char c) {
+    public OkJsonCharArrayBuilder appendPair(char[] name, char c) {
         int newBufLength = bufLength + name.length + 4;
 
         if (newBufLength > bufSize) resize(newBufLength);
@@ -2923,7 +2761,7 @@ class OkJsonCharArrayBuilder {
         return this;
     }
 
-    public OkJsonCharArrayBuilder appendJsonNameAndColonAndOpenBytePretty(char[] name, char c) {
+    public OkJsonCharArrayBuilder appendPairPretty(char[] name, char c) {
         int newBufLength = bufLength + name.length + 7;
 
         if (newBufLength > bufSize) resize(newBufLength);
@@ -2948,7 +2786,7 @@ class OkJsonCharArrayBuilder {
         return this;
     }
 
-    public OkJsonCharArrayBuilder appendJsonNameAndColonAndCharArray(char[] name, char[] str) {
+    public OkJsonCharArrayBuilder appendPair(char[] name, char[] str) {
         int newBufLength = bufLength + name.length + str.length + 3;
 
         if (newBufLength > bufSize)
@@ -2968,7 +2806,7 @@ class OkJsonCharArrayBuilder {
         return this;
     }
 
-    public OkJsonCharArrayBuilder appendJsonNameAndColonAndCharArrayPretty(char[] name, char[] str) {
+    public OkJsonCharArrayBuilder appendPairPretty(char[] name, char[] str) {
         int newBufLength = bufLength + name.length + str.length + 5;
 
         if (newBufLength > bufSize)
@@ -3093,18 +2931,6 @@ class OkJsonCharArrayBuilder {
         return this;
     }
 
-    public OkJsonCharArrayBuilder appendJsonString(String str) {
-        int strLength = str.length();
-        int newBufLength = bufLength + strLength;
-
-        if (newBufLength > bufSize)
-            resize(newBufLength);
-
-        str.getChars(0, strLength, buf, bufLength);
-        bufLength += strLength;
-
-        return this;
-    }
 
     public OkJsonCharArrayBuilder appendJsonStringWithQuote(String str) {
         int strLength = str.length();
@@ -3123,12 +2949,36 @@ class OkJsonCharArrayBuilder {
         return this;
     }
 
+    public OkJsonCharArrayBuilder appendFieldName(char[] name) {
+        int newBufLength = bufLength + name.length + 3;
+        if (newBufLength > bufSize) resize(newBufLength);
+        buf[bufLength++] = '"';
+        System.arraycopy(name, 0, buf, bufLength, name.length);
+        bufLength += name.length;
+        buf[bufLength++] = '"';
+        buf[bufLength++] = ':';
+        return this;
+    }
+
+    public OkJsonCharArrayBuilder appendFieldNamePretty(char[] name) {
+        int newBufLength = bufLength + name.length + 5;
+        if (newBufLength > bufSize) resize(newBufLength);
+        buf[bufLength++] = '"';
+        System.arraycopy(name, 0, buf, bufLength, name.length);
+        bufLength += name.length;
+        buf[bufLength++] = '"';
+        buf[bufLength++] = ' ';
+        buf[bufLength++] = ':';
+        buf[bufLength++] = ' ';
+        return this;
+    }
+
     public void appendEnter(boolean prettyFormatEnable) {
         if (prettyFormatEnable) appendChar('\n');
     }
 
     public void appendEmptyJsonArray(boolean prettyFormatEnable, int depth, char[] fieldName) {
-        if (prettyFormatEnable) appendTabs(depth + 1);
+        if (prettyFormatEnable) appendTabs(depth );
         appendPair(fieldName, "[]");
     }
 
