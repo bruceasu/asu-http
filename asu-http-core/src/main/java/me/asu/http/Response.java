@@ -30,32 +30,72 @@ public class Response implements Closeable {
         Arrays.fill(statuses, "Unknown Status");
         statuses[100] = "Continue";
         statuses[101] = "Switching Protocols";
+        statuses[102] = "Processing";                 // WebDAV
+        statuses[103] = "Early Hints";                // RFC 8297
+
         statuses[200] = "OK";
         statuses[201] = "Created";
+        statuses[202] = "Accepted";
+        statuses[203] = "Non-Authoritative Information";
         statuses[204] = "No Content";
+        statuses[205] = "Reset Content";
         statuses[206] = "Partial Content";
+        statuses[207] = "Multi-Status";               // WebDAV
+        statuses[208] = "Already Reported";           // WebDAV
+        statuses[226] = "IM Used";                    // RFC 3229
+
+        statuses[300] = "Multiple Choices";
         statuses[301] = "Moved Permanently";
         statuses[302] = "Found";
+        statuses[303] = "See Other";
         statuses[304] = "Not Modified";
+        statuses[305] = "Use Proxy";                  // Deprecated
+        statuses[306] = "Switch Proxy";               // No longer used
         statuses[307] = "Temporary Redirect";
         statuses[308] = "Permanent Redirect";
+
         statuses[400] = "Bad Request";
         statuses[401] = "Unauthorized";
+        statuses[402] = "Payment Required";           // Reserved
         statuses[403] = "Forbidden";
         statuses[404] = "Not Found";
         statuses[405] = "Method Not Allowed";
+        statuses[406] = "Not Acceptable";
+        statuses[407] = "Proxy Authentication Required";
         statuses[408] = "Request Timeout";
+        statuses[409] = "Conflict";
+        statuses[410] = "Gone";
+        statuses[411] = "Length Required";
         statuses[412] = "Precondition Failed";
-        statuses[413] = "Content Too Large";
+        statuses[413] = "Content Too Large";          // RFC 9110 (used to be Payload Too Large)
         statuses[414] = "URI Too Long";
+        statuses[415] = "Unsupported Media Type";
         statuses[416] = "Range Not Satisfiable";
         statuses[417] = "Expectation Failed";
+        statuses[418] = "I'm a teapot";               // RFC 2324 (April Fools)
+        statuses[421] = "Misdirected Request";
+        statuses[422] = "Unprocessable Content";      // WebDAV / RFC 9110
+        statuses[423] = "Locked";                     // WebDAV
+        statuses[424] = "Failed Dependency";          // WebDAV
+        statuses[425] = "Too Early";                  // RFC 8470
+        statuses[426] = "Upgrade Required";
+        statuses[428] = "Precondition Required";      // RFC 6585
+        statuses[429] = "Too Many Requests";          // RFC 6585
+        statuses[431] = "Request Header Fields Too Large"; // RFC 6585
+        statuses[451] = "Unavailable For Legal Reasons";   // RFC 7725
+
         statuses[500] = "Internal Server Error";
         statuses[501] = "Not Implemented";
         statuses[502] = "Bad Gateway";
         statuses[503] = "Service Unavailable";
         statuses[504] = "Gateway Timeout";
         statuses[505] = "HTTP Version Not Supported";
+        statuses[506] = "Variant Also Negotiates";    // RFC 2295
+        statuses[507] = "Insufficient Storage";       // WebDAV
+        statuses[508] = "Loop Detected";              // WebDAV
+        statuses[510] = "Not Extended";               // RFC 2774
+        statuses[511] = "Network Authentication Required"; // RFC 6585
+
     }
 
    static HTTPServer.GzipConfig gzipConfig;

@@ -6,7 +6,7 @@
     <parent>
         <groupId>me.asu</groupId>
         <artifactId>asu-http</artifactId>
-        <version>2.0-SNAPSHOT</version>
+        <version>2.1-SNAPSHOT</version>
     </parent>
 
     <artifactId>asu-http-server</artifactId>
@@ -21,7 +21,7 @@
         <dependency>
             <groupId>me.asu</groupId>
             <artifactId>asu-http-core</artifactId>
-            <version>2.0-SNAPSHOT</version>
+            <version>2.1-SNAPSHOT</version>
         </dependency>
     </dependencies>
 </project>
