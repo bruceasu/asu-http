@@ -1,13 +1,6 @@
 package me.asu.http;
 
-import lombok.Getter;
-
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -15,8 +8,6 @@ import java.util.NoSuchElementException;
 import static me.asu.http.Bytes.getBytes;
 import static me.asu.http.HeaderKey.*;
 import static me.asu.http.Headers.readHeaders;
-import static me.asu.http.Streams.readToken;
-import static me.asu.http.Streams.transfer;
 import static me.asu.http.Strings.isEmpty;
 
 /**
@@ -90,4 +81,3 @@ public class MultipartIterator implements Iterator<Part> {
         throw new UnsupportedOperationException();
     }
 }
-

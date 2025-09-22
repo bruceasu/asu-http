@@ -10,12 +10,7 @@
     <packaging>pom</packaging>
     <modules>
         <module>asu-http-core</module>
-        <module>asu-http-file-handler</module>
-        <module>asu-http-method-handler</module>
         <module>asu-http-server</module>
-        <module>asu-http-xml-support</module>
-        <module>asu-http-multipart-support</module>
-        <module>asu-http-json-support</module>
     </modules>
     <properties>
         <!-- MAVEN 配置 -->

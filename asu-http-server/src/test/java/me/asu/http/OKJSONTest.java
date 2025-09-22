@@ -1,6 +1,7 @@
 package me.asu.http;
 
 import junit.framework.TestCase;
+import me.asu.log.Log;
 import org.junit.Test;
 
 import java.util.*;
@@ -10,16 +11,16 @@ public class OKJSONTest extends TestCase {
     public void testOKJSON() throws Exception {
         String json = "{\"a\": \"string\", \"b\": 123, \"c\": true, \"d\": [\"a1\", \"a2\", \"a3\"], \"e\": [1,2,3,4]}";
         Map<String, Object> m = OKJSON.toMap(json, OKJSON.OPTIONS_DIRECT_ACCESS_PROPERTY_ENABLE);
-        System.out.println(m);
+        Log.info("Map: " + m);
         assertEquals("string", m.get("a"));
         m.put("Z", null);
         m.put("Y", new Integer[0]);
         m.put("X", Collections.emptyList());
-        System.out.println("m = "+m);
+        Log.info("m = "+m);
         String str1 = OKJSON.stringify(m, OKJSON.OPTIONS_DIRECT_ACCESS_PROPERTY_ENABLE | OKJSON.OPTIONS_PRETTY_FORMAT_ENABLE);
-        System.out.println("pretty: " + str1);
+        Log.info("pretty: " + str1);
         String str2 = OKJSON.stringify(m, OKJSON.OPTIONS_DIRECT_ACCESS_PROPERTY_ENABLE );
-        System.out.println("compact: " + str2);
+        Log.info("compact: " + str2);
         
         List list = new ArrayList();
         list.add("string");
@@ -29,17 +30,17 @@ public class OKJSONTest extends TestCase {
         list.add(new int[]{1,2,3,4});
         list.add(new HashMap(){{put("a","string");}});
         String listJson = OKJSON.stringify(list, OKJSON.OPTIONS_DIRECT_ACCESS_PROPERTY_ENABLE | OKJSON.OPTIONS_PRETTY_FORMAT_ENABLE);
-        System.out.println(listJson);
+        Log.info(listJson);
 
         String stringify = OKJSON.stringify(new int[]{1,2,3,4}, OKJSON.OPTIONS_PRETTY_FORMAT_ENABLE);
-        System.out.println("array: " + stringify);
-        System.out.println("list: " +  OKJSON.stringify(Arrays.asList(4,3,2,1,0), OKJSON.OPTIONS_PRETTY_FORMAT_ENABLE));
+        Log.info("array: " + stringify);
+        Log.info("list: " +  OKJSON.stringify(Arrays.asList(4,3,2,1,0), OKJSON.OPTIONS_PRETTY_FORMAT_ENABLE));
         String arrStr = "[1,2,3,4, \"sdfas\", {\"a\": \"string\", \"b\": 123, \"c\": true, \"d\": [\"a1\", \"a2\", \"a3\"], \"e\": [1,2,3,4]}]";
         List listObj = OKJSON.toJson(arrStr, List.class, OKJSON.OPTIONS_PRETTY_FORMAT_ENABLE);
-        System.out.println("Object: " + listObj);
+        Log.info("Object: " + listObj);
         for (Object o : listObj) {
-            System.out.println(o.getClass().getName() + ": " + o);
+            Log.info(o.getClass().getName() + ": " + o);
         }
-        System.out.println(OKJSON.stringify(listObj,  OKJSON.OPTIONS_PRETTY_FORMAT_ENABLE));
+        Log.info(OKJSON.stringify(listObj,  OKJSON.OPTIONS_PRETTY_FORMAT_ENABLE));
     }
 }

@@ -1,5 +1,6 @@
 package me.asu.http;
 
+import me.asu.log.Log;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -113,10 +114,10 @@ public class ParseXMLUtils {
         try {
             document = parseXmlString(str1);
             Map map = dom2Map(document);
-            System.out.println("map 1 >>> " + map);
+            Log.info("map 1 >>> " + map);
             document = parseXmlString(str2);
             map = dom2Map(document);
-            System.out.println("map 2 >>> " + map);
+            Log.info("map 2 >>> " + map);
         } catch (Exception e) {
             e.printStackTrace();
         }

@@ -7,7 +7,6 @@ public class MultipartRequestParser implements RequestParser {
             final MultipartIterator multipartIterator = new MultipartIterator(request);
             while (multipartIterator.hasNext()) {
                 final Part next = multipartIterator.next();
-                // todo: parse the data
                 if (next.type == Part.FILE) {
                     next.writeToTempFile();
                     request.files.add(next);
