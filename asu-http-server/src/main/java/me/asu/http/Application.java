@@ -12,6 +12,8 @@ import java.lang.reflect.Method;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -25,7 +27,7 @@ import static me.asu.http.Strings.isEmpty;
 @Getter
 public class Application {
     private transient HTTPServer               httpServer;
-    private transient ThreadPoolExecutor       executor;
+    private transient ExecutorService          executor;
     private           AppConfig                config      = new AppConfig();
 
     public Application() throws IOException {
@@ -81,9 +83,13 @@ public class Application {
     }
 
     void createExecutor() {
-        executor = new ThreadPoolExecutor(config.getThreads(), config.getThreads(), 0L,
-                TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>(),
-                new NamedThreadFactory("Http-Worker-"));
+        if (config.isVirtualThreads()) {
+            executor = Executors.newVirtualThreadPerTaskExecutor();
+        } else {
+            executor = new ThreadPoolExecutor(config.getThreads(), config.getThreads(), 0L,
+                    TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>(),
+                    new NamedThreadFactory("Http-Worker-"));
+        }
     }
 
     void createHttpServer(int port) {
@@ -160,9 +166,50 @@ public class Application {
         int                   port         = DEFAULT_PORT;
         String                host         = DEFAULT_HOST;
         int                   threads      = DEFAULT_THREADS;
+        boolean               virtualThreads = true;
         Charset               bodyEncoding = StandardCharsets.UTF_8;
         Charset               uriEncoding  = StandardCharsets.UTF_8;
         boolean               enableGzip   = false;
         boolean               enableCors   = false;
+
+        public HTTPServer.GzipConfig getGzipConfig() {
+            return gzipConfig;
+        }
+
+        public HTTPServer.CorsConfig getCorsConfig() {
+            return corsConfig;
+        }
+
+        public int getPort() {
+            return port;
+        }
+
+        public void setPort(int port) {
+            this.port = port;
+        }
+
+        public String getHost() {
+            return host;
+        }
+
+        public void setHost(String host) {
+            this.host = host;
+        }
+
+        public int getThreads() {
+            return threads;
+        }
+
+        public void setThreads(int threads) {
+            this.threads = threads;
+        }
+
+        public boolean isVirtualThreads() {
+            return virtualThreads;
+        }
+
+        public void setVirtualThreads(boolean virtualThreads) {
+            this.virtualThreads = virtualThreads;
+        }
     }
 }

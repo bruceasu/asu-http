@@ -1762,6 +1762,38 @@ class OkJsonParser {
         this.errorCode = 0;
         this.errorDesc = null;
     }
+
+    public boolean isStrictPolicyEnable() {
+        return strictPolicyEnable;
+    }
+
+    public void setStrictPolicyEnable(boolean strictPolicyEnable) {
+        this.strictPolicyEnable = strictPolicyEnable;
+    }
+
+    public boolean isDirectAccessPropertyEnable() {
+        return directAccessPropertyEnable;
+    }
+
+    public void setDirectAccessPropertyEnable(boolean directAccessPropertyEnable) {
+        this.directAccessPropertyEnable = directAccessPropertyEnable;
+    }
+
+    public boolean isPrettyFormatEnable() {
+        return prettyFormatEnable;
+    }
+
+    public void setPrettyFormatEnable(boolean prettyFormatEnable) {
+        this.prettyFormatEnable = prettyFormatEnable;
+    }
+
+    public Integer getErrorCode() {
+        return errorCode;
+    }
+
+    public String getErrorDesc() {
+        return errorDesc;
+    }
 }
 
 @Getter
@@ -1949,6 +1981,46 @@ class OkJsonGenerator {
         this.nullEnable = false;
         this.errorCode = 0;
         this.errorDesc = null;
+    }
+
+    public boolean isStrictPolicyEnable() {
+        return strictPolicyEnable;
+    }
+
+    public void setStrictPolicyEnable(boolean strictPolicyEnable) {
+        this.strictPolicyEnable = strictPolicyEnable;
+    }
+
+    public boolean isDirectAccessPropertyEnable() {
+        return directAccessPropertyEnable;
+    }
+
+    public void setDirectAccessPropertyEnable(boolean directAccessPropertyEnable) {
+        this.directAccessPropertyEnable = directAccessPropertyEnable;
+    }
+
+    public boolean isPrettyFormatEnable() {
+        return prettyFormatEnable;
+    }
+
+    public void setPrettyFormatEnable(boolean prettyFormatEnable) {
+        this.prettyFormatEnable = prettyFormatEnable;
+    }
+
+    public boolean isNullEnable() {
+        return nullEnable;
+    }
+
+    public void setNullEnable(boolean nullEnable) {
+        this.nullEnable = nullEnable;
+    }
+
+    public Integer getErrorCode() {
+        return errorCode;
+    }
+
+    public String getErrorDesc() {
+        return errorDesc;
     }
 
     public void stringifyToFile(Object object, String filePath) {

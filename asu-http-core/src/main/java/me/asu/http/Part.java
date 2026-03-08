@@ -28,6 +28,10 @@ public class Part {
     public String contentType;
     public Path path;
 
+    public Path getPath() {
+        return path;
+    }
+
     /***
      * 以字符串形式返回部分的主体。如果该部分的
      * 头信息未指定字符集，则使用UTF-8编码。

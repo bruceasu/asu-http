@@ -107,6 +107,18 @@ public class Response implements Closeable {
     protected int          state;       // nothing sent, headers sent, or closed
     protected Request      request;     // request used in determining client capabilities
 
+    public Headers getHeaders() {
+        return headers;
+    }
+
+    public OutputStream getOutputStream() {
+        return outputStream;
+    }
+
+    public void setDiscardBody(boolean discardBody) {
+        this.discardBody = discardBody;
+    }
+
     /**
      * Constructs a Response whose output is written to the given stream.
      *

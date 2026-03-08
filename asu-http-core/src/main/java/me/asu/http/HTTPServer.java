@@ -7,12 +7,14 @@ import javax.net.ServerSocketFactory;
 import javax.net.ssl.SSLServerSocketFactory;
 import javax.net.ssl.SSLSocket;
 import java.io.*;
-import java.lang.reflect.Method;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.*;
-import java.util.concurrent.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
 import static me.asu.http.Bytes.CRLF;
 import static me.asu.http.Bytes.getBytes;
@@ -26,21 +28,33 @@ import static me.asu.http.Strings.trimRight;
 @Data
 public class HTTPServer {
 
-    protected          String              name;
-    protected volatile String              directoryIndex = "index.html";
-    protected volatile boolean             allowGeneratedIndex;
-    protected volatile boolean             enableCors;
-    protected final    Set<String>         methods        = new CopyOnWriteArraySet<>();
-    protected final    ContextInfo         rootContext    = new ContextInfo("", ""); // root of context tree
-    protected volatile int                 port           = 80;
-    protected volatile int                 nThreads       = 256;
-    protected volatile int                 socketTimeout  = 5000;
+    protected String name;
+    protected volatile String directoryIndex = "index.html";
+    protected volatile boolean allowGeneratedIndex;
+    protected volatile boolean enableCors;
+    protected final Set<String> methods = new CopyOnWriteArraySet<>();
+    protected final ContextInfo rootContext = new ContextInfo("", ""); // root of context tree
+    protected volatile int port = 80;
+    protected volatile int nThreads = 256;
+    protected volatile int socketTimeout = 5000;
     protected volatile ServerSocketFactory serverSocketFactory;
-    protected volatile boolean             secure = false;
-    protected volatile Executor            executor;
-    protected volatile ServerSocket        serv;
-    protected          CorsConfig          corsConfig     = new CorsConfig();
-    protected          GzipConfig          gzipConfig     = new GzipConfig();
+    protected volatile boolean secure = false;
+    protected volatile Executor executor;
+    protected volatile ServerSocket serv;
+    protected CorsConfig corsConfig = new CorsConfig();
+    protected GzipConfig gzipConfig = new GzipConfig();
+
+    public void setPort(int port) {
+        this.port = port;
+    }
+
+    public boolean isEnableCors() {
+        return enableCors;
+    }
+
+    public void setExecutor(Executor executor) {
+        this.executor = executor;
+    }
 
     /**
      * 将一个上下文及其相应的上下文处理器添加至本服务器。
@@ -114,7 +128,7 @@ public class HTTPServer {
         serv.setReuseAddress(true);
         serv.bind(new InetSocketAddress(port));
         if (executor == null) {
-            executor = Executors.newFixedThreadPool(nThreads);
+            executor = Executors.newVirtualThreadPerTaskExecutor();
         }
         Response.gzipConfig = gzipConfig;
         new SocketHandlerThread().start();
@@ -146,7 +160,7 @@ public class HTTPServer {
     protected void handleConnection(InputStream in, OutputStream out, Socket sock) throws IOException {
         in = new BufferedInputStream(in, 4096);
         out = new BufferedOutputStream(out, 4096);
-        Request  req;
+        Request req;
         Response resp;
         do {
             // create request and response and handle transaction
@@ -176,9 +190,9 @@ public class HTTPServer {
             } finally {
                 resp.close(); // close response and flush output
                 // consume any leftover body data so next request can be processed
-                if (req!= null) transfer(req.getBody(), null, -1);
+                if (req != null) transfer(req.getBody(), null, -1);
                 // [RFC9112#9.3/9.6] persist connection unless client or server close explicitly (or legacy client)
-                if (req!= null) req.cleanup();
+                if (req != null) req.cleanup();
             }
 
         } while (!CLOSE.equalsIgnoreCase(resp.getHeaders().get(CONNECTION))
@@ -241,7 +255,7 @@ public class HTTPServer {
      * @throws IOException 如果发生错误
      */
     protected void handleMethod(Request req, Response resp) throws IOException {
-        String                      method   = req.getMethod();
+        String method = req.getMethod();
         Map<String, ContextHandler> handlers = req.getContext().getHandlers();
         // [RFC9110#9.1] GET and HEAD must be supported
         if (method.equals("GET") || handlers.containsKey(method)) {
@@ -258,9 +272,9 @@ public class HTTPServer {
     }
 
     void handleOption(Request req, Response resp) throws IOException {
-        String                      method   = req.getMethod();
+        String method = req.getMethod();
         Map<String, ContextHandler> handlers = req.getContext().getHandlers();
-        Set<String>                 methods  = new LinkedHashSet<>();
+        Set<String> methods = new LinkedHashSet<>();
         methods.addAll(Arrays.asList("GET", "HEAD", "TRACE", "OPTIONS")); // built-in methods
         // "*" is a special server-wide (no-context) request supported by OPTIONS
         boolean isServerOptions = req.getPath().equals("*") && method.equals("OPTIONS");
@@ -314,8 +328,8 @@ public class HTTPServer {
      */
     void handleTrace(Request req, Response resp) throws IOException {
         resp.sendHeaders(200, -1, -1, null, "message/http", null);
-        int          version = req.getVersion();
-        OutputStream out     = resp.getBody();
+        int version = req.getVersion();
+        OutputStream out = resp.getBody();
         out.write(getBytes("TRACE ", req.getUri().toString(), " HTTP/" + version / 10 + "." + version % 10));
         out.write(CRLF);
         req.getHeaders().writeTo(out); // warning: this may disclose sensitive headers (cookies, auth etc.)
@@ -331,7 +345,7 @@ public class HTTPServer {
      */
     void serve(Request req, Response resp) throws IOException {
         // get context handler to handle request
-        final ContextInfo                 context  = req.getContext().getContext(req.getPath());
+        final ContextInfo context = req.getContext().getContext(req.getPath());
         final Map<String, ContextHandler> handlers = context.getHandlers();
 
         ContextHandler handler = handlers.get(req.getMethod());
@@ -357,7 +371,7 @@ public class HTTPServer {
         if (status == 404)
             status = handler.serve(req, resp);
 
-        if (status >0) resp.sendError(status);
+        if (status > 0) resp.sendError(status);
     }
 
     /**
@@ -367,12 +381,16 @@ public class HTTPServer {
     @Getter
     public class ContextInfo {
 
-        protected String                      path; // 从根节点到该节点的完整路径。
-        protected String                      segment; // 该节点的路径段仅此而已。
-        protected String                      param; // 参数名称（如果不是参数节点则为 null）
-        protected int                         rank; // 定义匹配上下文的优先顺序。
-        protected ContextInfo[]               children = new ContextInfo[0];
+        protected String path; // 从根节点到该节点的完整路径。
+        protected String segment; // 该节点的路径段仅此而已。
+        protected String param; // 参数名称（如果不是参数节点则为 null）
+        protected int rank; // 定义匹配上下文的优先顺序。
+        protected ContextInfo[] children = new ContextInfo[0];
         protected Map<String, ContextHandler> handlers = new ConcurrentHashMap<>(2);
+
+        public Map<String, ContextHandler> getHandlers() {
+            return handlers;
+        }
 
         /**
          * 利用给定的上下文路径和片段构造一个上下文信息对象。
@@ -456,11 +474,11 @@ public class HTTPServer {
          * （根上下文在没有匹配时返回自身）
          */
         protected ContextInfo getContext(String path, int i, boolean create, int rank, List<String[]> params) {
-            int     j       = 0;                  // 当前节点的段内匹配索引
-            int     len     = path.length();      // 完整路径长度
-            String  segment = this.segment;       // 当前节点的段落
-            int     slen    = segment.length();   // 当前段落长度
-            boolean param   = this.param != null; // 是否是参数表达式
+            int j = 0;                  // 当前节点的段内匹配索引
+            int len = path.length();      // 完整路径长度
+            String segment = this.segment;       // 当前节点的段落
+            int slen = segment.length();   // 当前段落长度
+            boolean param = this.param != null; // 是否是参数表达式
 
             if (!param || create) {
                 for (; j < slen && i < len && segment.charAt(j) == path.charAt(i); i++, j++) ;
@@ -472,7 +490,7 @@ public class HTTPServer {
             ContextInfo context = null; // the best matched context
             if (!create) {
                 boolean wildcard = param && this.param.charAt(0) == '*';
-                int     start    = i;
+                int start = i;
                 if (param) // param - match reluctantly until slash or end, i.e. "([^/]+?)"
                     for (; i < len && (path.charAt(i) != '/' || wildcard); i++) ; // find maximal param end
                 int end = i;
@@ -520,7 +538,7 @@ public class HTTPServer {
                 return this;
             // 附加新的子节点，同时递归地将参数拆分为单独的节点。
             int start = path.indexOf('{', i);
-            int end   = start < 0 ? len : start > i ? start : path.indexOf('}', start) + 1;
+            int end = start < 0 ? len : start > i ? start : path.indexOf('}', start) + 1;
             if (end == 0)
                 throw new IllegalArgumentException("unterminated param: " + path);
             context = new ContextInfo(path.substring(0, end), path.substring(i, end));
@@ -573,15 +591,15 @@ public class HTTPServer {
         /**
          * 该字段必填。它的值要么是请求时Origin字段的具体值，要么是一个*，表示接受任意域名的请求。
          */
-        String  accessControlAllowOrigin  = "*";
+        String accessControlAllowOrigin = "*";
         /**
          * 该字段必填。它的值是逗号分隔的一个具体的字符串或者*，表明服务器支持的所有跨域请求的方法。注意，返回的是所有支持的方法，而不单是浏览器请求的那个方法。这是为了避免多次"预检"请求。
          */
-        String  accessControlAllowMethods = "*";
+        String accessControlAllowMethods = "*";
         /**
          * 该字段可选。CORS请求时，XMLHttpRequest对象的getResponseHeader()方法只能拿到6个基本字段：Cache-Control、Content-Language、Content-Type、Expires、Last-Modified、Pragma。如果想拿到其他字段，就必须在Access-Control-Expose-Headers里面指定。
          */
-        String  accessControlExposeHeaders;
+        String accessControlExposeHeaders;
         /**
          * 该字段可选。它的值是一个布尔值，表示是否允许发送Cookie.默认情况下，不发生Cookie，即：false。对服务器有特殊要求的请求，比如请求方法是PUT或DELETE，或者Content-Type字段的类型是application/json，这个值只能设为true。如果服务器不要浏览器发送Cookie，删除该字段即可。
          */
@@ -589,7 +607,27 @@ public class HTTPServer {
         /**
          * 该字段可选，用来指定本次预检请求的有效期，单位为秒。在有效期间，不用发出另一条预检请求。
          */
-        Long    accessControlMaxAge;
+        Long accessControlMaxAge;
+
+        public String getAccessControlAllowOrigin() {
+            return accessControlAllowOrigin;
+        }
+
+        public String getAccessControlAllowMethods() {
+            return accessControlAllowMethods;
+        }
+
+        public String getAccessControlExposeHeaders() {
+            return accessControlExposeHeaders;
+        }
+
+        public Boolean getAccessControlAllowCredentials() {
+            return accessControlAllowCredentials;
+        }
+
+        public Long getAccessControlMaxAge() {
+            return accessControlMaxAge;
+        }
     }
 
     @Data

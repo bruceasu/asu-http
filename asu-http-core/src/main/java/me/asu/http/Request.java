@@ -50,6 +50,38 @@ public class Request {
      */
     protected final Map<String, Object> dataMap = new HashMap<>();
 
+    public String getMethod() {
+        return method;
+    }
+
+    public URI getUri() {
+        return uri;
+    }
+
+    public int getVersion() {
+        return version;
+    }
+
+    public Headers getHeaders() {
+        return headers;
+    }
+
+    public InputStream getBody() {
+        return body;
+    }
+
+    public ParamMap getBodyMap() {
+        return bodyMap;
+    }
+
+    public ParamMap getParamMap() {
+        return paramMap;
+    }
+
+    public Map<String, Object> getDataMap() {
+        return dataMap;
+    }
+
     public boolean isMultipartFormData() {
         String ct = contentType();
         return (ct != null && ct.startsWith(CommonContentType.FORM_DATA.type()));
